@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-export default function UserSearchRow({ user, onAdd }) {
+export default function UserSearchRow({ user, onAdd, isInvited = false }) {
   const [role, setRole] = useState("MEMBER");
   const [adding, setAdding] = useState(false);
 
@@ -25,17 +25,22 @@ export default function UserSearchRow({ user, onAdd }) {
         <select
           value={role}
           onChange={(e) => setRole(e.target.value)}
-          className="bg-slate-700 border border-white/15 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-purple-500"
+          disabled={isInvited}
+          className="bg-slate-700 border border-white/15 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-purple-500 disabled:opacity-50"
         >
           <option value="MEMBER">MEMBER</option>
           <option value="MANAGER">MANAGER</option>
         </select>
         <button
           onClick={handleAdd}
-          disabled={adding}
-          className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded-lg text-xs font-semibold transition"
+          disabled={adding || isInvited}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+            isInvited
+              ? "bg-green-600/30 text-green-300 border border-green-600/30 cursor-not-allowed"
+              : "bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
+          }`}
         >
-          {adding ? "..." : "+ Thêm"}
+          {isInvited ? "✓ Đã mời" : adding ? "..." : "+ Mời"}
         </button>
       </div>
     </div>

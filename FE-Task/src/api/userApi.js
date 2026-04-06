@@ -21,6 +21,11 @@ const userApi = {
     return http.put(`/api/users/${id}`, userData);
   },
 
+  // Update avatar URL (after uploading to Cloudinary)
+  updateAvatarUrl: (id, avatarUrl) => {
+    return http.put(`/api/users/${id}/avatar`, { avatarUrl });
+  },
+
   // Xóa user khỏi hệ thống
   deleteUser: (id) => {
     return http.delete(`/api/users/${id}`);

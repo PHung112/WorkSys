@@ -4,7 +4,7 @@ import { inputCls, labelCls } from "../../common/formStyles";
 
 export default function InviteMemberModal({
   searchQuery, setSearchQuery, searchResults, searchLoading,
-  onAdd, onClose, formError,
+  onAdd, onClose, formError, invitedUserIds = [],
 }) {
   return (
     <Modal
@@ -33,7 +33,12 @@ export default function InviteMemberModal({
         {searchResults.length > 0 && (
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {searchResults.map((u) => (
-              <UserSearchRow key={u.id} user={u} onAdd={onAdd} />
+              <UserSearchRow 
+                key={u.id} 
+                user={u} 
+                onAdd={onAdd}
+                isInvited={invitedUserIds.includes(u.id)}
+              />
             ))}
           </div>
         )}

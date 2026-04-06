@@ -12,6 +12,10 @@ export default function AppNavbar() {
     navigate("/auth");
   };
 
+  const handleProfileClick = () => {
+    navigate("/profile");
+  };
+
   return (
     <header className="sticky top-0 z-30 border-b border-white/8 bg-slate-900/90 backdrop-blur px-6 py-3.5 flex items-center justify-between">
       <div className="flex items-center gap-2 hover:opacity-80 transition">
@@ -22,14 +26,21 @@ export default function AppNavbar() {
       </div>
       <div className="flex items-center gap-4">
         {currentUser && (
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-purple-600/40 rounded-full flex items-center justify-center text-xs font-bold text-white">
-              {currentUser.username?.[0]?.toUpperCase()}
+          <button
+            onClick={handleProfileClick}
+            className="flex items-center gap-2 hover:opacity-80 transition"
+          >
+            <div className="w-8 h-8 bg-purple-600/40 rounded-full flex items-center justify-center text-xs font-bold text-white overflow-hidden shrink-0">
+              {currentUser.avatarUrl ? (
+                <img src={currentUser.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                currentUser.username?.[0]?.toUpperCase()
+              )}
             </div>
-            <span className="text-white/65 text-sm">
+            <span className="text-white/65 text-sm hover:text-white">
               {currentUser.username}
             </span>
-          </div>
+          </button>
         )}
         {currentUser && <NotificationBell />}
         <button

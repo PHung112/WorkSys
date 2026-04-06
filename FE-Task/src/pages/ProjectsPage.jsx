@@ -18,7 +18,9 @@ import ConfirmLeaveModal from "../components/projects/modals/ConfirmLeaveModal";
 import SubmitTaskModal from "../components/projects/modals/SubmitTaskModal";
 import TransferAdminModal from "../components/projects/modals/TransferAdminModal";
 import ConfirmModal from "../components/common/ConfirmModal";
+import { subscribeRealtime } from "../realtime/wsClient";
 
+// Trang quản lý dự án: xử lý danh sách project, members, tasks, modal và realtime sync.
 export default function ProjectsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -38,8 +40,17 @@ export default function ProjectsPage() {
   // Forms
   const [projectForm, setProjectForm] = useState({ name: "", description: "" });
   const [roleForm, setRoleForm] = useState({ role: "MEMBER" });
-  const [taskForm, setTaskForm] = useState({ title: "", description: "", deadline: "", assignedToId: "" });
-  const [submitForm, setSubmitForm] = useState({ link: "", file: null, taskId: null });
+  const [taskForm, setTaskForm] = useState({
+    title: "",
+    description: "",
+    deadline: "",
+    assignedToId: "",
+  });
+  const [submitForm, setSubmitForm] = useState({
+    link: "",
+    file: null,
+    taskId: null,
+  });
   const [formError, setFormError] = useState("");
 
   // Member search
@@ -49,35 +60,95 @@ export default function ProjectsPage() {
   const searchTimerRef = useRef(null);
 
   const [transferTarget, setTransferTarget] = useState("");
+  const [invitedUserIds, setInvitedUserIds] = useState([]);
+  const realtimeRefreshRef = useRef(null);
+
+  // Loading
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
   // Auth guard
   useEffect(() => {
     const saved = sessionStorage.getItem("currentUser");
-    if (!saved) { navigate("/auth"); return; }
+    if (!saved) {
+      navigate("/auth");
+      return;
+    }
     setCurrentUser(JSON.parse(saved));
-  }, []);
+  }, [navigate]);
 
   // Debounced user search
   useEffect(() => {
     if (modal !== "inviteMember") return;
-    if (!searchQuery.trim()) { setSearchResults([]); return; }
+    if (!searchQuery.trim()) {
+      searchResults([]);
+      return;
+    }
     clearTimeout(searchTimerRef.current);
     setSearchLoading(true);
     searchTimerRef.current = setTimeout(async () => {
       try {
         const res = await userApi.searchUsers(searchQuery.trim());
-        setSearchResults(res.data.filter((u) => !members.find((m) => m.userId === u.id)));
-      } catch { setSearchResults([]); }
-      finally { setSearchLoading(false); }
+        setSearchResults(
+          res.data.filter((u) => !members.find((m) => m.userId === u.id)),
+        );
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
     }, 500);
     return () => clearTimeout(searchTimerRef.current);
   }, [searchQuery, modal, members]);
 
+  // Tải toàn bộ project mà user hiện tại đang tham gia.
   const loadProjects = useCallback(async () => {
-    try { const res = await projectApi.getMyProjects(); setProjects(res.data); } catch {}
+    try {
+      const res = await projectApi.getMyProjects();
+      setProjects(res.data);
+      return res.data;
+    } catch {
+      return [];
+    }
   }, []);
 
-  useEffect(() => { loadProjects(); }, [loadProjects]);
+  // [2] CẬP NHẬT HÀM SELECT PROJECT: BẬT TẮT LOADING
+  const selectProject = useCallback(async (project) => {
+    setSelectedProject(project); // Đổi tên project trên header ngay lập tức
+    setActiveTab("members");
+    setIsLoadingDetails(true); // Bật vòng xoay loading che cái màn hình cũ đi
+
+    try {
+      const [mRes, tRes] = await Promise.all([
+        projectApi.getProjectMembers(project.id),
+        taskApi.getTasksByProject(project.id),
+      ]);
+      setMembers(mRes.data);
+      setTasks(tRes.data);
+    } catch {
+      // ignore initial detail load failure
+    } finally {
+      setIsLoadingDetails(false); // Tắt loading, show data mới
+    }
+  }, []);
+
+  // Refresh phần chi tiết project hiện tại (Dùng cho realtime, KHÔNG bật loading full màn hình để tránh giật UI)
+  const refreshDetails = useCallback(async (projectId) => {
+    if (!projectId) return;
+    try {
+      const [mRes, tRes] = await Promise.all([
+        projectApi.getProjectMembers(projectId),
+        taskApi.getTasksByProject(projectId),
+      ]);
+      setMembers(mRes.data);
+      setTasks(tRes.data);
+    } catch {
+      // ignore details refresh failure
+    }
+  }, []);
+
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
 
   // Auto-select project from ?goto=id URL param (from notification click)
   useEffect(() => {
@@ -89,7 +160,7 @@ export default function ProjectsPage() {
       setActiveTab("tasks");
       setSearchParams({}, { replace: true }); // clean up URL
     }
-  }, [searchParams, projects]);
+  }, [searchParams, projects, selectProject, setSearchParams]);
 
   // Listen for invite accepted (from NotificationBell) → reload projects
   useEffect(() => {
@@ -98,71 +169,125 @@ export default function ProjectsPage() {
     return () => window.removeEventListener("inviteAccepted", handler);
   }, [loadProjects]);
 
-  const selectProject = useCallback(async (project) => {
-    setSelectedProject(project);
-    setActiveTab("members");
-    try {
-      const [mRes, tRes] = await Promise.all([
-        projectApi.getProjectMembers(project.id),
-        taskApi.getTasksByProject(project.id),
-      ]);
-      setMembers(mRes.data);
-      setTasks(tRes.data);
-    } catch {}
-  }, []);
+  // Realtime: updates that affect this user's project list
+  useEffect(() => {
+    if (!currentUser?.id) return;
 
-  const refreshDetails = useCallback(async (projectId) => {
-    if (!projectId) return;
-    try {
-      const [mRes, tRes] = await Promise.all([
-        projectApi.getProjectMembers(projectId),
-        taskApi.getTasksByProject(projectId),
-      ]);
-      setMembers(mRes.data);
-      setTasks(tRes.data);
-    } catch {}
-  }, []);
+    const unsubscribe = subscribeRealtime(
+      `/topic/users/${currentUser.id}/projects`,
+      async (event) => {
+        const refreshedProjects = await loadProjects();
+        if (!selectedProject) return;
 
+        const stillMember = refreshedProjects.some(
+          (p) => p.id === selectedProject.id,
+        );
+        if (!stillMember) {
+          setSelectedProject(null);
+          setMembers([]);
+          setTasks([]);
+          setModal(null);
+          return;
+        }
+
+        const changedProjectId = Number(event?.projectId);
+        if (!changedProjectId || changedProjectId === selectedProject.id) {
+          await refreshDetails(selectedProject.id);
+        }
+      },
+    );
+
+    return () => unsubscribe();
+  }, [currentUser?.id, loadProjects, refreshDetails, selectedProject]);
+
+  // Realtime: updates inside currently selected project
+  useEffect(() => {
+    if (!selectedProject?.id) return;
+
+    const unsubscribe = subscribeRealtime(
+      `/topic/projects/${selectedProject.id}`,
+      () => {
+        clearTimeout(realtimeRefreshRef.current);
+        realtimeRefreshRef.current = setTimeout(async () => {
+          await refreshDetails(selectedProject.id);
+          await loadProjects();
+        }, 180);
+      },
+    );
+
+    return () => {
+      clearTimeout(realtimeRefreshRef.current);
+      unsubscribe();
+    };
+  }, [selectedProject?.id, refreshDetails, loadProjects]);
+
+  // Mở modal theo tên và reset trạng thái lỗi
   const openModal = (name, data = {}) => {
     setFormError("");
     setModalData(data);
     setModal(name);
-    if (name !== "inviteMember") { setSearchQuery(""); setSearchResults([]); }
+    if (name !== "inviteMember") {
+      setSearchQuery("");
+      setSearchResults([]);
+    }
   };
 
   // ── Project handlers ────────────────────────────────────────────────────────
   const handleCreateProject = async (e) => {
-    e.preventDefault(); setFormError("");
+    e.preventDefault();
+    setFormError("");
     try {
-      await projectApi.createProject({ name: projectForm.name, description: projectForm.description });
-      await loadProjects(); setModal(null); setProjectForm({ name: "", description: "" });
-    } catch { setFormError("Tạo dự án thất bại."); }
+      await projectApi.createProject({
+        name: projectForm.name,
+        description: projectForm.description,
+      });
+      await loadProjects();
+      setModal(null);
+      setProjectForm({ name: "", description: "" });
+    } catch {
+      setFormError("Tạo dự án thất bại.");
+    }
   };
 
   const handleEditProject = async (e) => {
-    e.preventDefault(); setFormError("");
+    e.preventDefault();
+    setFormError("");
     try {
-      const res = await projectApi.updateProject(selectedProject.id, projectForm);
-      setSelectedProject(res.data); await loadProjects(); setModal(null);
-    } catch { setFormError("Cập nhật thất bại."); }
+      const res = await projectApi.updateProject(
+        selectedProject.id,
+        projectForm,
+      );
+      setSelectedProject(res.data);
+      await loadProjects();
+      setModal(null);
+    } catch {
+      setFormError("Cập nhật thất bại.");
+    }
   };
 
   const handleDeleteProject = async () => {
     try {
       await projectApi.deleteProject(selectedProject.id);
-      setSelectedProject(null); setMembers([]); setTasks([]); await loadProjects(); setModal(null);
-    } catch {}
+      setSelectedProject(null);
+      setMembers([]);
+      setTasks([]);
+      await loadProjects();
+      setModal(null);
+    } catch {
+      // ignore project deletion error
+    }
   };
 
   // ── Member handlers ─────────────────────────────────────────────────────────
   const handleInviteMember = async (userId, role) => {
     setFormError("");
     try {
-      await projectApi.inviteMember(selectedProject.id, { userId: Number(userId), role });
-      // Note: member is NOT added immediately — they must accept the invite notification
-      setSearchResults((prev) => prev.filter((u) => u.id !== userId));
-      setFormError(""); // clear error — success
-      alert(`Lời mời đã được gửi!`);
+      await projectApi.inviteMember(selectedProject.id, {
+        userId: Number(userId),
+        role,
+      });
+      setInvitedUserIds((prev) => [...prev, userId]);
+      setFormError("");
     } catch (err) {
       setFormError(err?.response?.data?.error || "Mời thành viên thất bại.");
     }
@@ -173,43 +298,78 @@ export default function ProjectsPage() {
     try {
       await projectApi.removeMember(selectedProject.id, userId);
       if (isSelf) {
-        setSelectedProject(null); setMembers([]); setTasks([]); await loadProjects(); setModal(null);
-      } else { await refreshDetails(selectedProject.id); }
-    } catch {}
+        setSelectedProject(null);
+        setMembers([]);
+        setTasks([]);
+        await loadProjects();
+        setModal(null);
+      } else {
+        await refreshDetails(selectedProject.id);
+      }
+    } catch {
+      // ignore member remove errors
+    }
   };
 
   const handleAdminLeave = async (e) => {
-    e.preventDefault(); setFormError("");
+    e.preventDefault();
+    setFormError("");
     if (!transferTarget) return;
     try {
-      await projectApi.updateMemberRole(selectedProject.id, Number(transferTarget), { role: "ADMIN" });
+      await projectApi.updateMemberRole(
+        selectedProject.id,
+        Number(transferTarget),
+        { role: "ADMIN" },
+      );
       await projectApi.removeMember(selectedProject.id, currentUser.id);
-      setSelectedProject(null); setMembers([]); setTasks([]); await loadProjects(); setModal(null);
-    } catch { setFormError("Chuyển nhượng thất bại."); }
+      setSelectedProject(null);
+      setMembers([]);
+      setTasks([]);
+      await loadProjects();
+      setModal(null);
+    } catch {
+      setFormError("Chuyển nhượng thất bại.");
+    }
   };
 
   const handleUpdateRole = async (e) => {
-    e.preventDefault(); setFormError("");
+    e.preventDefault();
+    setFormError("");
     try {
-      await projectApi.updateMemberRole(selectedProject.id, modalData.userId, roleForm);
-      await refreshDetails(selectedProject.id); setModal(null);
-    } catch { setFormError("Cập nhật vai trò thất bại."); }
+      await projectApi.updateMemberRole(
+        selectedProject.id,
+        modalData.userId,
+        roleForm,
+      );
+      await refreshDetails(selectedProject.id);
+      setModal(null);
+    } catch {
+      setFormError("Cập nhật vai trò thất bại.");
+    }
   };
 
   // ── Task handlers ───────────────────────────────────────────────────────────
   const handleCreateTask = async (e) => {
-    e.preventDefault(); setFormError("");
+    e.preventDefault();
+    setFormError("");
     try {
       await taskApi.createTask({
         projectId: selectedProject.id,
-        assignedToId: taskForm.assignedToId ? Number(taskForm.assignedToId) : null,
+        assignedToId: taskForm.assignedToId
+          ? Number(taskForm.assignedToId)
+          : null,
         title: taskForm.title,
         description: taskForm.description,
         deadline: taskForm.deadline || null,
       });
       await refreshDetails(selectedProject.id);
       setModal(null);
-      setTaskForm({ title: "", description: "", deadline: "", assignedToId: "" });
+      setTaskForm({
+        title: "",
+        description: "",
+        deadline: "",
+        assignedToId: "",
+      });
     } catch (err) {
       const msg = err?.response?.data?.message;
       setFormError(msg ? `Lỗi: ${msg}` : "Tạo task thất bại.");
@@ -217,12 +377,16 @@ export default function ProjectsPage() {
   };
 
   const handleEditTask = async (e) => {
-    e.preventDefault(); setFormError("");
+    e.preventDefault();
+    setFormError("");
     try {
       await taskApi.updateTask(modalData.taskId, {
-        title: taskForm.title, description: taskForm.description, deadline: taskForm.deadline || null,
+        title: taskForm.title,
+        description: taskForm.description,
+        deadline: taskForm.deadline || null,
       });
-      await refreshDetails(selectedProject.id); setModal(null);
+      await refreshDetails(selectedProject.id);
+      setModal(null);
     } catch (err) {
       const msg = err?.response?.data?.message;
       setFormError(msg ? `Lỗi: ${msg}` : "Cập nhật task thất bại.");
@@ -230,24 +394,37 @@ export default function ProjectsPage() {
   };
 
   const handleDeleteTask = async (taskId) => {
-    try { await taskApi.deleteTask(taskId); await refreshDetails(selectedProject.id); } catch {}
+    try {
+      await taskApi.deleteTask(taskId);
+      await refreshDetails(selectedProject.id);
+    } catch {
+      // ignore
+    }
   };
 
   const handleAcceptTask = async (taskId) => {
-    try { await taskApi.acceptTask(taskId, currentUser.id); await refreshDetails(selectedProject.id); } catch {}
+    try {
+      await taskApi.acceptTask(taskId, currentUser.id);
+      await refreshDetails(selectedProject.id);
+    } catch {
+      // ignore
+    }
   };
 
   const handleDoSubmitTask = async (e) => {
-    e.preventDefault(); setFormError("");
+    e.preventDefault();
+    setFormError("");
     if (!submitForm.link && !submitForm.file) {
-      setFormError("Vui lòng nộp file hoặc link liên kết."); return;
+      setFormError("Vui lòng nộp file hoặc link liên kết.");
+      return;
     }
     try {
       await taskApi.submitTask(submitForm.taskId, currentUser.id, {
         submissionLink: submitForm.link || undefined,
         file: submitForm.file || undefined,
       });
-      await refreshDetails(selectedProject.id); setModal(null);
+      await refreshDetails(selectedProject.id);
+      setModal(null);
     } catch (err) {
       const msg = err?.response?.data?.message || err?.response?.data;
       setFormError(msg ? `Lỗi: ${msg}` : "Nộp task thất bại.");
@@ -255,7 +432,7 @@ export default function ProjectsPage() {
   };
 
   const handleConfirmDownload = async () => {
-    const { submissionLink, title } = modalData;
+    const { submissionLink } = modalData;
     setModal(null);
     if (!submissionLink) return;
     if (submissionLink.startsWith("/api/files/")) {
@@ -266,7 +443,11 @@ export default function ProjectsPage() {
 
         const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
         if (utf8Match?.[1]) {
-          try { downloadName = decodeURIComponent(utf8Match[1]); } catch {}
+          try {
+            downloadName = decodeURIComponent(utf8Match[1]);
+          } catch {
+            // fallback
+          }
         } else {
           const normalMatch = disposition.match(/filename="?([^";]+)"?/i);
           if (normalMatch?.[1]) downloadName = normalMatch[1];
@@ -320,24 +501,44 @@ export default function ProjectsPage() {
               setActiveTab={setActiveTab}
               currentUser={currentUser}
               myRole={myRole}
+              isLoading={isLoadingDetails} // [3] TRUYỀN XUỐNG ĐỂ TẠO HIỆU ỨNG TRONG PROJECTDETAIL
               onOpenEditProject={() => {
-                setProjectForm({ name: selectedProject.name, description: selectedProject.description || "" });
+                setProjectForm({
+                  name: selectedProject.name,
+                  description: selectedProject.description || "",
+                });
                 openModal("editProject");
               }}
               onOpenDeleteProject={() => openModal("confirmDeleteProject")}
               onOpenLeave={() => openModal("confirmLeave")}
-              onOpenTransfer={() => { setTransferTarget(""); openModal("transferAdmin"); }}
+              onOpenTransfer={() => {
+                setTransferTarget("");
+                openModal("transferAdmin");
+              }}
               onOpenInviteMember={() => openModal("inviteMember")}
               onOpenConfirmKick={(userId, username) =>
                 openModal("confirmKickMember", { userId, username })
               }
-              onOpenEditRole={(userId, role) => { setRoleForm({ role }); openModal("editRole", { userId }); }}
+              onOpenEditRole={(userId, role) => {
+                setRoleForm({ role });
+                openModal("editRole", { userId });
+              }}
               onOpenCreateTask={() => {
-                setTaskForm({ title: "", description: "", deadline: "", assignedToId: "" });
+                setTaskForm({
+                  title: "",
+                  description: "",
+                  deadline: "",
+                  assignedToId: "",
+                });
                 openModal("createTask");
               }}
               onOpenEditTask={(task) => {
-                setTaskForm({ title: task.title, description: task.description || "", deadline: task.deadline || "", assignedToId: "" });
+                setTaskForm({
+                  title: task.title,
+                  description: task.description || "",
+                  deadline: task.deadline || "",
+                  assignedToId: "",
+                });
                 openModal("editTask", { taskId: task.id });
               }}
               onOpenConfirmDeleteTask={(taskId, title) =>
@@ -360,66 +561,98 @@ export default function ProjectsPage() {
       {/* ════════════ MODALS ════════════ */}
       {modal === "createProject" && (
         <CreateProjectModal
-          projectForm={projectForm} setProjectForm={setProjectForm}
-          onSubmit={handleCreateProject} onClose={() => setModal(null)} formError={formError}
+          projectForm={projectForm}
+          setProjectForm={setProjectForm}
+          onSubmit={handleCreateProject}
+          onClose={() => setModal(null)}
+          formError={formError}
         />
       )}
       {modal === "editProject" && (
         <EditProjectModal
-          projectForm={projectForm} setProjectForm={setProjectForm}
-          onSubmit={handleEditProject} onClose={() => setModal(null)} formError={formError}
+          projectForm={projectForm}
+          setProjectForm={setProjectForm}
+          onSubmit={handleEditProject}
+          onClose={() => setModal(null)}
+          formError={formError}
         />
       )}
       {modal === "confirmDeleteProject" && (
         <ConfirmDeleteProjectModal
           projectName={selectedProject?.name}
-          onConfirm={handleDeleteProject} onClose={() => setModal(null)}
+          onConfirm={handleDeleteProject}
+          onClose={() => setModal(null)}
         />
       )}
       {modal === "inviteMember" && (
         <InviteMemberModal
-          searchQuery={searchQuery} setSearchQuery={setSearchQuery}
-          searchResults={searchResults} searchLoading={searchLoading}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          searchResults={searchResults}
+          searchLoading={searchLoading}
           onAdd={handleInviteMember}
-          onClose={() => { setModal(null); setSearchQuery(""); setSearchResults([]); }}
+          onClose={() => {
+            setModal(null);
+            setSearchQuery("");
+            setSearchResults([]);
+          }}
           formError={formError}
+          invitedUserIds={invitedUserIds}
         />
       )}
       {modal === "editRole" && (
         <EditRoleModal
-          roleForm={roleForm} setRoleForm={setRoleForm}
-          onSubmit={handleUpdateRole} onClose={() => setModal(null)} formError={formError}
+          roleForm={roleForm}
+          setRoleForm={setRoleForm}
+          onSubmit={handleUpdateRole}
+          onClose={() => setModal(null)}
+          formError={formError}
         />
       )}
       {modal === "createTask" && (
         <CreateTaskModal
-          taskForm={taskForm} setTaskForm={setTaskForm} members={members}
-          onSubmit={handleCreateTask} onClose={() => setModal(null)} formError={formError}
+          taskForm={taskForm}
+          setTaskForm={setTaskForm}
+          members={members}
+          onSubmit={handleCreateTask}
+          onClose={() => setModal(null)}
+          formError={formError}
         />
       )}
       {modal === "editTask" && (
         <EditTaskModal
-          taskForm={taskForm} setTaskForm={setTaskForm}
-          onSubmit={handleEditTask} onClose={() => setModal(null)} formError={formError}
+          taskForm={taskForm}
+          setTaskForm={setTaskForm}
+          onSubmit={handleEditTask}
+          onClose={() => setModal(null)}
+          formError={formError}
         />
       )}
       {modal === "confirmLeave" && (
         <ConfirmLeaveModal
           projectName={selectedProject?.name}
-          onConfirm={() => handleRemoveMember(currentUser.id)} onClose={() => setModal(null)}
+          onConfirm={() => handleRemoveMember(currentUser.id)}
+          onClose={() => setModal(null)}
         />
       )}
       {modal === "submitTask" && (
         <SubmitTaskModal
-          submitForm={submitForm} setSubmitForm={setSubmitForm}
-          onSubmit={handleDoSubmitTask} onClose={() => setModal(null)} formError={formError}
+          submitForm={submitForm}
+          setSubmitForm={setSubmitForm}
+          onSubmit={handleDoSubmitTask}
+          onClose={() => setModal(null)}
+          formError={formError}
         />
       )}
       {modal === "transferAdmin" && (
         <TransferAdminModal
-          members={members} currentUserId={currentUser.id}
-          transferTarget={transferTarget} setTransferTarget={setTransferTarget}
-          onSubmit={handleAdminLeave} onClose={() => setModal(null)} formError={formError}
+          members={members}
+          currentUserId={currentUser.id}
+          transferTarget={transferTarget}
+          setTransferTarget={setTransferTarget}
+          onSubmit={handleAdminLeave}
+          onClose={() => setModal(null)}
+          formError={formError}
         />
       )}
       {modal === "confirmKickMember" && (
@@ -427,7 +660,10 @@ export default function ProjectsPage() {
           title="Kick thành viên"
           message={`Bạn có chắc chắn muốn xóa ${modalData.username ?? "thành viên này"} khỏi project?`}
           confirmLabel="Kick"
-          onConfirm={() => { setModal(null); handleRemoveMember(modalData.userId); }}
+          onConfirm={() => {
+            setModal(null);
+            handleRemoveMember(modalData.userId);
+          }}
           onClose={() => setModal(null)}
         />
       )}
@@ -436,7 +672,10 @@ export default function ProjectsPage() {
           title="Xóa task"
           message={`Bạn có chắc chắn muốn xóa task "${modalData.title ?? ""}"? Hành động này không thể hoàn tác.`}
           confirmLabel="Xóa"
-          onConfirm={() => { setModal(null); handleDeleteTask(modalData.taskId); }}
+          onConfirm={() => {
+            setModal(null);
+            handleDeleteTask(modalData.taskId);
+          }}
           onClose={() => setModal(null)}
         />
       )}
@@ -453,99 +692,3 @@ export default function ProjectsPage() {
     </div>
   );
 }
-
-
-// ─── Status config ────────────────────────────────────────────────────────────
-const STATUS_CFG = {
-  TODO: { label: "Todo", cls: "bg-slate-700 text-slate-300" },
-  ASSIGNED: { label: "Todo", cls: "bg-slate-700 text-slate-300" },
-  IN_PROGRESS: { label: "In Progress", cls: "bg-blue-500/20 text-blue-300" },
-  SUBMITTED: { label: "Submitted", cls: "bg-yellow-500/20 text-yellow-300" },
-  DONE: { label: "Done", cls: "bg-green-500/20 text-green-300" },
-};
-
-function StatusBadge({ status }) {
-  const cfg = STATUS_CFG[status] || {
-    label: status,
-    cls: "bg-slate-700 text-slate-300",
-  };
-  return (
-    <span
-      className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${cfg.cls}`}
-    >
-      {cfg.label}
-    </span>
-  );
-}
-
-// ─── Modal ─────────────────────────────────────────────────────────────────────
-function Modal({ title, onClose, children }) {
-  return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl">
-        <div className="flex justify-between items-center mb-5">
-          <h3 className="text-base font-semibold text-white">{title}</h3>
-          <button
-            onClick={onClose}
-            className="text-white/30 hover:text-white text-2xl leading-none transition"
-          >
-            &times;
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-// ─── Input helpers ─────────────────────────────────────────────────────────────
-const inputCls =
-  "w-full bg-slate-700 border border-white/15 rounded-xl px-4 py-2.5 text-white placeholder:text-white/25 focus:outline-none focus:border-purple-500 transition text-sm";
-const labelCls = "text-white/55 text-xs mb-1 block";
-const btnPrimary =
-  "flex-1 py-2.5 bg-purple-600 hover:bg-purple-700 rounded-xl font-medium text-sm transition";
-const btnSecondary =
-  "flex-1 py-2.5 border border-white/15 rounded-xl text-white/55 hover:text-white text-sm transition";
-
-// ─── UserSearchRow ─────────────────────────────────────────────────────────────
-function UserSearchRow({ user, onAdd }) {
-  const [role, setRole] = useState("MEMBER");
-  const [adding, setAdding] = useState(false);
-  const handleAdd = async () => {
-    setAdding(true);
-    await onAdd(user.id, role);
-    setAdding(false);
-  };
-  return (
-    <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-4 py-3 mx-1.5 gap-3">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="w-8 h-8 bg-purple-600/35 rounded-full flex items-center justify-center text-xs font-bold text-purple-300 shrink-0">
-          {user.username?.[0]?.toUpperCase() ?? "?"}
-        </div>
-        <div className="min-w-0">
-          <div className="text-sm font-medium truncate">{user.username}</div>
-          <div className="text-white/35 text-xs truncate">{user.email}</div>
-        </div>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <select
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-          className="bg-slate-700 border border-white/15 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-purple-500"
-        >
-          <option value="MEMBER">MEMBER</option>
-          <option value="MANAGER">MANAGER</option>
-        </select>
-        <button
-          onClick={handleAdd}
-          disabled={adding}
-          className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded-lg text-xs font-semibold transition"
-        >
-          {adding ? "..." : "+ Thêm"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-

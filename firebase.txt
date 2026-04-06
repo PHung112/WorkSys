@@ -1,0 +1,3 @@
+api secret : 2RfgcfiK-bITkPqyh5NvKJu1_yE
+api key : 763579341335442
+cloud name : dud6jryis

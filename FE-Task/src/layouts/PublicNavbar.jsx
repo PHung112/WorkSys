@@ -11,16 +11,16 @@ export default function PublicNavbar() {
       </button>
       <div className="flex gap-3">
         <button
-          onClick={() => navigate('/auth')}
+          onClick={() => navigate('/auth?tab=login')}
           className="px-4 py-2 text-white/70 hover:text-white transition text-sm font-medium"
         >
           Đăng nhập
         </button>
         <button
-          onClick={() => navigate('/auth')}
+          onClick={() => navigate('/auth?tab=register')}
           className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition text-sm font-semibold shadow-lg shadow-purple-500/20"
         >
-          Bắt đầu ngay →
+          Đăng ký
         </button>
       </div>
     </nav>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import notificationApi from "../../api/notificationApi";
+import { subscribeRealtime } from "../../realtime/wsClient";
 
 function timeAgo(isoString) {
   if (!isoString) return "";
@@ -18,6 +19,11 @@ export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef(null);
+  const isOpenRef = useRef(false);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
 
   const fetchUnreadCount = useCallback(async () => {
     try {
@@ -41,12 +47,33 @@ export default function NotificationBell() {
     }
   }, []);
 
-  // Initial fetch + polling every 30s
+  // Initial fetch
   useEffect(() => {
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
   }, [fetchUnreadCount]);
+
+  // Realtime notifications by user topic
+  useEffect(() => {
+    const rawUser = sessionStorage.getItem("currentUser");
+    if (!rawUser) return;
+
+    let userId;
+    try {
+      userId = JSON.parse(rawUser)?.id;
+    } catch {
+      userId = null;
+    }
+    if (!userId) return;
+
+    const unsubscribe = subscribeRealtime(`/topic/users/${userId}/notifications`, async () => {
+      await fetchUnreadCount();
+      if (isOpenRef.current) {
+        await fetchNotifications();
+      }
+    });
+
+    return () => unsubscribe();
+  }, [fetchUnreadCount, fetchNotifications]);
 
   // Open dropdown → fetch full list
   useEffect(() => {
@@ -99,6 +126,16 @@ export default function NotificationBell() {
     }
   };
 
+  const handleMarkAllAsRead = async () => {
+    try {
+      await notificationApi.markAllAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      alert(err?.response?.data?.error || "Có lỗi xảy ra");
+    }
+  };
+
   const handleTaskNotificationClick = async (n) => {
     await handleMarkRead(n);
     setIsOpen(false);
@@ -129,9 +166,23 @@ export default function NotificationBell() {
         <div className="absolute right-0 top-full mt-2 w-80 bg-slate-800 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
           <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
             <span className="text-white font-semibold text-sm">Thông báo</span>
-            {unreadCount > 0 && (
-              <span className="text-xs text-white/40">{unreadCount} chưa đọc</span>
-            )}
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && (
+                <>
+                  <span className="text-xs text-white/40">{unreadCount} chưa đọc</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMarkAllAsRead();
+                    }}
+                    className="px-2 py-1 text-xs bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition font-medium"
+                    title="Đánh dấu tất cả đã xem"
+                  >
+                    Đánh dấu tất cả
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="max-h-96 overflow-y-auto">
