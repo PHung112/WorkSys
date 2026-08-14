@@ -2,6 +2,7 @@ import axios from "axios";
 
 // Instance dùng chung cho toàn bộ app
 const http = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || "https://api.tdphihung.id.vn",
   headers: { "Content-Type": "application/json" },
 });
 

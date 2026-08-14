@@ -1,0 +1,47 @@
+services:
+  frontend-app: 
+    image: phung112/task_fe:v2
+    ports:
+      - "5174:5173"
+    container_name: task_FE
+    restart: always
+    environment:
+      - VITE_API_URL=http://backend-app:8080
+    depends_on:
+      - backend-app
+  backend-app:
+    image: phung112/task_be:v3
+    depends_on:
+      - mysql
+    ports:
+         - "8081:8080"
+    container_name: task_BE
+    restart: always
+    environment:
+      # Truyền chuỗi bí mật cho JWT (ít nhất 32 ký tự)
+      JWT_SECRET: "your_super_secret_jwt_key_at_least_32_characters_long_here"
+      # Truyền Client ID/Secret cho Google OAuth2 (nếu chưa dùng có thể để tạm chuỗi bất kỳ)
+      GOOGLE_CLIENT_ID: "dummy_google_client_id"
+      GOOGLE_CLIENT_SECRET: "dummy_google_client_secret"
+      # Đổi localhost -> host.docker.internal để kết nối MySQL/XAMPP trên máy Windows của bạn
+      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/task_management?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true"
+      SPRING_DATASOURCE_USERNAME: "root"
+      SPRING_DATASOURCE_PASSWORD: "root"
+
+  mysql:
+    image: mysql:8.0
+    container_name: task_DB
+    restart: always
+    environment:
+        MYSQL_ROOT_PASSWORD: root
+        MYSQL_DATABASE: task_management
+    ports:
+      - "3307:3306"
+    volumes:
+      # Lưu data của DB
+      - mysql_data:/var/lib/mysql
+      # Tự động import file SQL khi khởi tạo container lần đầu
+      - ./Task-Management/task_management.sql:/docker-entrypoint-initdb.d/task_management.sql
+
+volumes:
+    mysql_data:

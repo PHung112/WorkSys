@@ -8,9 +8,10 @@ export default defineConfig({
   },
   plugins: [react(), tailwindcss()],
   server: {
+    allowedHosts: ['app.tdphihung.id.vn'],
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: process.env.VITE_API_URL || 'http://localhost:8080',
         changeOrigin: true,
       },
     },
