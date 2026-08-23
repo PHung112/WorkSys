@@ -1,6 +1,7 @@
 services:
   frontend-app: 
-    image: phung112/task_fe:v2
+    build:
+      context: ./FE-WorkSys
     ports:
       - "5174:5173"
     container_name: task_FE
@@ -10,7 +11,9 @@ services:
     depends_on:
       - backend-app
   backend-app:
-    image: phung112/task_be:v3
+    # image: phung112/task_be:v3
+    build:
+      context: ./WorkSys-Backend
     depends_on:
       - mysql
     ports:
