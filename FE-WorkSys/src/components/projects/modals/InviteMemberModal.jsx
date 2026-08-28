@@ -30,7 +30,7 @@ export default function InviteMemberModal({
               </span>
             )}
           </div>
-          <p className="text-[11px] text-on-surface-variant mt-1.5 opacity-60">Chỉ hiển thị người dùng chưa ở trong dự án</p>
+          <p className="text-[11px] text-center text-on-surface-variant mt-1.5 opacity-60">Chỉ hiển thị người dùng chưa ở trong dự án</p>
         </div>
 
         {searchResults.length > 0 && (
@@ -38,8 +38,12 @@ export default function InviteMemberModal({
             {searchResults.map((u) => (
               <div key={u.id} className="flex items-center justify-between p-3 rounded-xl bg-surface-container-high border border-outline-variant/10 hover:border-primary/20 transition-all">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-sm ring-1 ring-primary/30 shrink-0">
-                    {u.username?.charAt(0).toUpperCase() || "?"}
+                  <div className="w-9 h-9 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-sm ring-1 ring-primary/30 shrink-0 overflow-hidden">
+                    {u.avatarUrl ? (
+                      <img src={u.avatarUrl} alt={u.username} className="w-full h-full object-cover" />
+                    ) : (
+                      u.username?.charAt(0).toUpperCase() || "?"
+                    )}
                   </div>
                   <div className="flex flex-col">
                     <span className="font-medium text-on-surface text-sm">{u.username}</span>
@@ -72,7 +76,7 @@ export default function InviteMemberModal({
         )}
         {!searchQuery.trim() && (
           <div className="flex flex-col items-center justify-center py-6 text-center">
-            <span className="material-symbols-outlined text-[32px] text-on-surface-variant opacity-30 mb-2">mail_search</span>
+            <span className="material-symbols-outlined text-[32px] text-on-surface-variant opacity-30 mb-2">search</span>
             <p className="text-on-surface-variant text-xs opacity-50">Gõ email để tìm thành viên</p>
           </div>
         )}

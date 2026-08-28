@@ -15,7 +15,7 @@ Hệ thống quản lý công việc nhóm với Spring Boot
 
 - Tạo và quản lý projects
 - Mời members vào project
-- Phân quyền: ADMIN, MEMBER, VIEWER
+- Phân quyền: ADMIN, MEMBER
 - Xóa members khỏi project
 - Thay đổi role của members
 
@@ -189,7 +189,7 @@ POST /api/tasks/1/submit?memberId=2
 - **Project** - Thông tin dự án
 - **ProjectMember** - Thành viên trong project (Many-to-Many)
 - **Task** - Công việc cần làm
-- **Role** - Enum: ADMIN, MEMBER, VIEWER
+- **Role** - Enum: ADMIN, MEMBER
 - **TaskStatus** - Enum: ASSIGNED, IN_PROGRESS, SUBMITTED, COMPLETED
 
 ---

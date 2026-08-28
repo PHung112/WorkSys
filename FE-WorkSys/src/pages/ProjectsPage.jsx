@@ -12,13 +12,21 @@ import EditProjectModal from "../components/projects/modals/EditProjectModal";
 import ConfirmDeleteProjectModal from "../components/projects/modals/ConfirmDeleteProjectModal";
 import InviteMemberModal from "../components/projects/modals/InviteMemberModal";
 import EditRoleModal from "../components/projects/modals/EditRoleModal";
-import CreateTaskModal from "../components/projects/modals/CreateTaskModal";
 import EditTaskModal from "../components/projects/modals/EditTaskModal";
 import ConfirmLeaveModal from "../components/projects/modals/ConfirmLeaveModal";
 import SubmitTaskModal from "../components/projects/modals/SubmitTaskModal";
 import TransferAdminModal from "../components/projects/modals/TransferAdminModal";
 import ConfirmModal from "../components/common/ConfirmModal";
 import { subscribeRealtime } from "../realtime/wsClient";
+
+// Hàm tiện ích lấy chuỗi ngày hiện tại (YYYY-MM-DD) theo giờ địa phương của máy người dùng
+const getTodayString = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 // Trang quản lý dự án: xử lý danh sách project, members, tasks, modal và realtime sync.
 export default function ProjectsPage() {
@@ -31,7 +39,11 @@ export default function ProjectsPage() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [members, setMembers] = useState([]);
   const [tasks, setTasks] = useState([]);
-  const [activeTab, setActiveTab] = useState("members");
+  const [archivedTasks, setArchivedTasks] = useState([]);
+  // Khôi phục tab đang mở từ cache (nếu có)
+  const [activeTab, setActiveTab] = useState(
+    () => sessionStorage.getItem("projectsPage_activeTab") || "members"
+  );
 
   // Modal
   const [modal, setModal] = useState(null);
@@ -43,8 +55,9 @@ export default function ProjectsPage() {
   const [taskForm, setTaskForm] = useState({
     title: "",
     description: "",
-    deadline: "",
+    deadline: getTodayString(),
     assignedToIds: [],
+    file: null,
   });
   const [submitForm, setSubmitForm] = useState({
     link: "",
@@ -52,6 +65,11 @@ export default function ProjectsPage() {
     taskId: null,
   });
   const [formError, setFormError] = useState("");
+
+  // Khôi phục trạng thái sidebar từ cache (mặc định là mở)
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => sessionStorage.getItem("projectsPage_sidebarOpen") !== "false"
+  );
 
   // Member search
   const [searchQuery, setSearchQuery] = useState("");
@@ -101,29 +119,45 @@ export default function ProjectsPage() {
   }, [searchQuery, modal, members]);
 
   // Tải toàn bộ project mà user hiện tại đang tham gia.
+  // Sau khi tải xong, tự động khôi phục project đã chọn trước đó từ sessionStorage.
   const loadProjects = useCallback(async () => {
     try {
       const res = await projectApi.getMyProjects();
       setProjects(res.data);
+
+      // Khôi phục project được chọn từ cache nếu chưa có project nào được chọn
+      const cachedId = sessionStorage.getItem("projectsPage_selectedProjectId");
+      if (cachedId) {
+        const cached = res.data.find((p) => String(p.id) === cachedId);
+        if (cached) {
+          // Dùng setSelectedProject trực tiếp để tránh gọi lại selectProject (đã có cache)
+          setSelectedProject(cached);
+        }
+      }
+
       return res.data;
     } catch {
       return [];
     }
   }, []);
 
-  // [2] CẬP NHẬT HÀM SELECT PROJECT: BẬT TẮT LOADING
+  // Chọn project: lưu cache ID vào sessionStorage để khôi phục khi quay lại trang
   const selectProject = useCallback(async (project) => {
     setSelectedProject(project); // Đổi tên project trên header ngay lập tức
     setActiveTab("members");
+    // Lưu ID project đang chọn vào cache
+    sessionStorage.setItem("projectsPage_selectedProjectId", String(project.id));
     setIsLoadingDetails(true); // Bật vòng xoay loading che cái màn hình cũ đi
 
     try {
-      const [mRes, tRes] = await Promise.all([
+      const [mRes, tRes, aRes] = await Promise.all([
         projectApi.getProjectMembers(project.id),
         taskApi.getTasksByProject(project.id),
+        projectApi.getArchivedTasks(project.id),
       ]);
       setMembers(mRes.data);
       setTasks(tRes.data);
+      setArchivedTasks(aRes.data);
     } catch {
       // ignore initial detail load failure
     } finally {
@@ -135,12 +169,14 @@ export default function ProjectsPage() {
   const refreshDetails = useCallback(async (projectId) => {
     if (!projectId) return;
     try {
-      const [mRes, tRes] = await Promise.all([
+      const [mRes, tRes, aRes] = await Promise.all([
         projectApi.getProjectMembers(projectId),
         taskApi.getTasksByProject(projectId),
+        projectApi.getArchivedTasks(projectId),
       ]);
       setMembers(mRes.data);
       setTasks(tRes.data);
+      setArchivedTasks(aRes.data);
     } catch {
       // ignore details refresh failure
     }
@@ -149,6 +185,37 @@ export default function ProjectsPage() {
   useEffect(() => {
     loadProjects();
   }, [loadProjects]);
+
+  // Lưu trạng thái sidebar vào sessionStorage mỗi khi thay đổi
+  useEffect(() => {
+    sessionStorage.setItem("projectsPage_sidebarOpen", String(sidebarOpen));
+  }, [sidebarOpen]);
+
+  // Lưu tab đang mở vào sessionStorage mỗi khi thay đổi
+  useEffect(() => {
+    sessionStorage.setItem("projectsPage_activeTab", activeTab);
+  }, [activeTab]);
+
+  // Khi project được khôi phục từ cache (selectedProject có nhưng members/tasks chưa được load),
+  // tự động fetch chi tiết members và tasks của project đó.
+  useEffect(() => {
+    if (!selectedProject?.id) return;
+    // Chỉ load nếu chưa có members (tức là vừa restore từ cache, chưa fetch API)
+    if (members.length > 0) return;
+
+    setIsLoadingDetails(true);
+    Promise.all([
+      projectApi.getProjectMembers(selectedProject.id),
+      taskApi.getTasksByProject(selectedProject.id),
+    ])
+      .then(([mRes, tRes]) => {
+        setMembers(mRes.data);
+        setTasks(tRes.data);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoadingDetails(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProject?.id]); // Chỉ chạy khi selectedProject.id thay đổi
 
   // Auto-select project from ?goto=id URL param (from notification click)
   useEffect(() => {
@@ -353,20 +420,34 @@ export default function ProjectsPage() {
     e.preventDefault();
     setFormError("");
     try {
-      await taskApi.createTask({
-        projectId: selectedProject.id,
-        assignedToIds: taskForm.assignedToIds,
-        title: taskForm.title,
-        description: taskForm.description,
-        deadline: taskForm.deadline || null,
-      });
+      if (taskForm.file) {
+        // Gửi qua Multipart Form-Data khi có file đính kèm mô tả task
+        const formData = new FormData();
+        formData.append("projectId", selectedProject.id);
+        formData.append("title", taskForm.title);
+        if (taskForm.description) formData.append("description", taskForm.description);
+        if (taskForm.deadline) formData.append("deadline", taskForm.deadline);
+        formData.append("file", taskForm.file);
+        (taskForm.assignedToIds || []).forEach((id) => formData.append("assignedToIds", id));
+        await taskApi.createTask(formData);
+      } else {
+        // Gửi qua JSON khi không có file
+        await taskApi.createTask({
+          projectId: selectedProject.id,
+          assignedToIds: taskForm.assignedToIds,
+          title: taskForm.title,
+          description: taskForm.description,
+          deadline: taskForm.deadline || null,
+        });
+      }
       await refreshDetails(selectedProject.id);
       setModal(null);
       setTaskForm({
         title: "",
         description: "",
-        deadline: "",
+        deadline: getTodayString(),
         assignedToIds: [],
+        file: null,
       });
     } catch (err) {
       const msg = err?.response?.data?.message;
@@ -504,9 +585,12 @@ export default function ProjectsPage() {
         }}
         currentUser={currentUser}
         onLogout={handleLogout}
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen((prev) => !prev)}
       />
 
-      <div className="flex-1 pl-72 flex flex-col min-w-0 relative h-[calc(100vh-4rem)]">
+      {/* Main area: shift right khi sidebar mở, full-width khi đóng */}
+      <div className={`flex-1 flex flex-col min-w-0 relative h-[calc(100vh-4rem)] transition-all duration-300 ease-in-out ${sidebarOpen ? "pl-72" : "pl-0"}`}>
         {/* Main Area */}
         <main className="flex-1 flex flex-col h-full overflow-hidden">
           {!selectedProject ? (
@@ -522,8 +606,7 @@ export default function ProjectsPage() {
               selectedProject={selectedProject}
               members={members}
               tasks={tasks}
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
+              archivedTasks={archivedTasks}
               currentUser={currentUser}
               myRole={myRole}
               isLoading={isLoadingDetails}
@@ -547,8 +630,7 @@ export default function ProjectsPage() {
                 openModal("editRole", { userId });
               }}
               onOpenCreateTask={() => {
-                setTaskForm({ title: "", description: "", deadline: "", assignedToIds: [] });
-                openModal("createTask");
+                navigate(`/projects/${selectedProject.id}/new-task`);
               }}
               onOpenEditTask={(task) => {
                 setTaskForm({
@@ -588,9 +670,6 @@ export default function ProjectsPage() {
       )}
       {modal === "editRole" && (
         <EditRoleModal roleForm={roleForm} setRoleForm={setRoleForm} onSubmit={handleUpdateRole} onClose={() => setModal(null)} formError={formError} />
-      )}
-      {modal === "createTask" && (
-        <CreateTaskModal taskForm={taskForm} setTaskForm={setTaskForm} members={members} onSubmit={handleCreateTask} onClose={() => setModal(null)} formError={formError} />
       )}
       {modal === "editTask" && (
         <EditTaskModal taskForm={taskForm} setTaskForm={setTaskForm} onSubmit={handleEditTask} onClose={() => setModal(null)} formError={formError} />

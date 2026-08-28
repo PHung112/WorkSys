@@ -141,7 +141,8 @@ public class ProjectService {
                         pm.getUser().getId(),
                         pm.getUser().getUsername(),
                         pm.getUser().getEmail(),
-                        pm.getRole().name()))
+                        pm.getRole().name(),
+                        pm.getUser().getAvatarUrl()))
                 .collect(Collectors.toList());
     }
 

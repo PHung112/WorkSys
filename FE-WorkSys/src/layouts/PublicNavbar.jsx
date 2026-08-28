@@ -19,8 +19,8 @@ export default function PublicNavbar() {
           <button onClick={() => navigate('/auth?tab=login')} className="font-mono text-sm font-medium text-on-surface-variant hover:text-on-surface px-4 py-2 cursor-pointer transition-colors">
             Đăng nhập
           </button>
-          <button onClick={() => navigate('/auth?tab=register')} className="bg-primary text-on-primary font-mono text-sm font-medium px-4 py-2 rounded-lg hover:bg-primary-fixed-dim transition-all shadow-[0_0_10px_rgba(192,193,255,0.2)] hover:shadow-[0_0_20px_rgba(192,193,255,0.4)] cursor-pointer">
-            Bắt đầu
+          <button onClick={() => navigate('/auth?tab=register')} className="font-mono text-sm font-medium text-on-surface-variant hover:text-on-surface px-4 py-2 cursor-pointer transition-colors">
+            Đăng ký
           </button>
         </div>
       </div>

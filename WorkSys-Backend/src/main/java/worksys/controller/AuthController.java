@@ -28,11 +28,16 @@ public class AuthController {
         try {
             User user = userService.createUser(request.username, request.email, request.password);
             String token = jwtUtil.generateToken(user.getId(), user.getUsername());
-            return ResponseEntity.ok(Map.of(
-                    "token", token,
-                    "id", user.getId(),
-                    "username", user.getUsername(),
-                    "email", user.getEmail()));
+            // Trả về đầy đủ thông tin user kể cả avatarUrl để FE lưu vào sessionStorage
+            Map<String, Object> body = new java.util.HashMap<>();
+            body.put("token", token);
+            body.put("id", user.getId());
+            body.put("username", user.getUsername());
+            body.put("email", user.getEmail());
+            body.put("avatarUrl", user.getAvatarUrl());
+            body.put("systemRole", user.getSystemRole());
+            body.put("status", user.getStatus());
+            return ResponseEntity.ok(body);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", "Username hoặc email đã tồn tại"));
         }
@@ -43,11 +48,16 @@ public class AuthController {
         try {
             User user = userService.login(request.username, request.password);
             String token = jwtUtil.generateToken(user.getId(), user.getUsername());
-            return ResponseEntity.ok(Map.of(
-                    "token", token,
-                    "id", user.getId(),
-                    "username", user.getUsername(),
-                    "email", user.getEmail()));
+            // Trả về đầy đủ thông tin user kể cả avatarUrl để FE lưu vào sessionStorage
+            Map<String, Object> body = new java.util.HashMap<>();
+            body.put("token", token);
+            body.put("id", user.getId());
+            body.put("username", user.getUsername());
+            body.put("email", user.getEmail());
+            body.put("avatarUrl", user.getAvatarUrl());
+            body.put("systemRole", user.getSystemRole());
+            body.put("status", user.getStatus());
+            return ResponseEntity.ok(body);
         } catch (RuntimeException e) {
             return ResponseEntity.status(401).body(Map.of("error", e.getMessage()));
         }

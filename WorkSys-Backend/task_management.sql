@@ -107,7 +107,7 @@ INSERT INTO `projects` (`id`, `created_at`, `description`, `name`, `created_by`)
 
 CREATE TABLE `project_members` (
   `id` bigint(20) NOT NULL,
-  `role` enum('ADMIN','MANAGER','MEMBER','VIEWER') NOT NULL,
+  `role` enum('ADMIN','MANAGER','MEMBER') NOT NULL,
   `project_id` bigint(20) NOT NULL,
   `user_id` bigint(20) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -119,7 +119,7 @@ CREATE TABLE `project_members` (
 INSERT INTO `project_members` (`id`, `role`, `project_id`, `user_id`) VALUES
 (1, 'ADMIN', 1, 1),
 (2, 'MEMBER', 1, 2),
-(3, 'VIEWER', 1, 3),
+
 (6, 'ADMIN', 3, 5),
 (8, 'ADMIN', 5, 9),
 (10, 'MEMBER', 6, 1),

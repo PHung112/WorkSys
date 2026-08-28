@@ -43,13 +43,14 @@ public class TaskService {
                 .orElseThrow(() -> new RuntimeException("Authenticated user not found"));
     }
 
-    // Tạo task mới
-    public Task createTask(Long projectId, List<Long> assigneeIds, String title, String description, LocalDate deadline) {
+    // Tạo task mới (hỗ trợ đính kèm file/tài liệu mô tả chi tiết nhiệm vụ)
+    public Task createTask(Long projectId, List<Long> assigneeIds, String title, String description, LocalDate deadline, String attachmentUrl) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
 
-        if (deadline != null && !deadline.isAfter(LocalDate.now())) {
-            throw new RuntimeException("Deadline phải ít nhất là ngày mai");
+        // Kiểm tra deadline: cho phép chọn từ ngày hôm nay trở đi (không được chọn ngày trong quá khứ)
+        if (deadline != null && deadline.isBefore(LocalDate.now())) {
+            throw new RuntimeException("Deadline không được ở trong quá khứ");
         }
 
         if (assigneeIds == null || assigneeIds.isEmpty()) {
@@ -61,6 +62,7 @@ public class TaskService {
         task.setTitle(title);
         task.setDescription(description);
         task.setDeadline(deadline);
+        task.setAttachmentUrl(attachmentUrl);
         task.setStatus(TaskStatus.TODO);
 
         java.util.Set<User> assignees = new java.util.HashSet<>();
@@ -103,11 +105,20 @@ public class TaskService {
         return taskRepository.findAll();
     }
 
-    // Lấy tasks theo project
+    // Lấy tasks theo project (chỉ lấy task CHƯA archive — dùng cho Kanban board)
     public List<Task> getTasksByProject(Long projectId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
-        return taskRepository.findByProject(project);
+        return taskRepository.findByProjectAndArchivedFalse(project);
+    }
+
+    // Lấy tasks đã archive theo project (dùng cho trang kho lưu trữ)
+    public List<TaskDTO> getArchivedTasksByProjectDTO(Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Project not found"));
+        return taskRepository.findByProjectAndArchivedTrue(project).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
     }
 
     // Lấy tasks theo user
@@ -122,8 +133,9 @@ public class TaskService {
         Task task = getTaskById(id);
         User currentUser = getCurrentUser();
 
-        if (deadline != null && !deadline.isAfter(LocalDate.now())) {
-            throw new RuntimeException("Deadline phải ít nhất là ngày mai");
+        // Kiểm tra deadline khi cập nhật: cho phép từ hôm nay trở đi
+        if (deadline != null && deadline.isBefore(LocalDate.now())) {
+            throw new RuntimeException("Deadline không được ở trong quá khứ");
         }
 
         if (!task.getAssignees().isEmpty()) {
@@ -246,13 +258,32 @@ public class TaskService {
         return saved;
     }
 
+    // Cập nhật trạng thái task (Dành cho Admin / Manager kéo thả trực tiếp trên Kanban)
+    public Task updateTaskStatus(Long id, TaskStatus newStatus) {
+        Task task = getTaskById(id);
+        User currentUser = getCurrentUser();
+
+        // Kiểm tra quyền: Phải là ADMIN hoặc MANAGER của project chứa task
+        ProjectMember pm = projectMemberRepository
+                .findByProjectAndUser(task.getProject(), currentUser)
+                .orElseThrow(() -> new RuntimeException("Bạn không phải thành viên dự án này"));
+        if (pm.getRole() == Role.MEMBER) {
+            throw new RuntimeException("Chỉ ADMIN hoặc MANAGER mới có quyền đổi trạng thái task");
+        }
+
+        task.setStatus(newStatus);
+        Task saved = taskRepository.save(task);
+        realtimeEventService.publishProjectChanged(saved.getProject(), "TASK_STATUS_UPDATED", currentUser.getId());
+        return saved;
+    }
+
     // Helper method: Convert Task sang TaskDTO
     private TaskDTO convertToDTO(Task task) {
         boolean late = task.getDeadline() != null && task.getSubmittedAt() != null
                 && task.getSubmittedAt().toLocalDate().isAfter(task.getDeadline());
         
         List<TaskDTO.AssigneeDTO> assignees = task.getAssignees().stream()
-                .map(u -> new TaskDTO.AssigneeDTO(u.getId(), u.getUsername(), u.getEmail()))
+                .map(u -> new TaskDTO.AssigneeDTO(u.getId(), u.getUsername(), u.getEmail(), u.getAvatarUrl()))
                 .collect(Collectors.toList());
         List<Long> acceptedUserIds = task.getAcceptedUsers().stream()
                 .map(User::getId)
@@ -271,14 +302,25 @@ public class TaskService {
                 task.getSubmissionLink());
         dto.setSubmittedAt(task.getSubmittedAt() != null ? task.getSubmittedAt().toString() : null);
         dto.setLate(late);
+        dto.setAttachmentUrl(task.getAttachmentUrl());
+        dto.setCreatedAt(task.getCreatedAt() != null ? task.getCreatedAt().toString() : null);
+        // Gắn thông tin archive vào DTO
+        dto.setArchived(task.isArchived());
+        dto.setArchivedAt(task.getArchivedAt() != null ? task.getArchivedAt().toString() : null);
         return dto;
     }
 
-    // Tạo task mới - trả về DTO
+    // Tạo task mới kèm file đính kèm - trả về DTO
+    public TaskDTO createTaskDTO(Long projectId, List<Long> assigneeIds, String title, String description,
+            LocalDate deadline, String attachmentUrl) {
+        Task task = createTask(projectId, assigneeIds, title, description, deadline, attachmentUrl);
+        return convertToDTO(task);
+    }
+
+    // Overload tạo task mới không có file đính kèm - trả về DTO
     public TaskDTO createTaskDTO(Long projectId, List<Long> assigneeIds, String title, String description,
             LocalDate deadline) {
-        Task task = createTask(projectId, assigneeIds, title, description, deadline);
-        return convertToDTO(task);
+        return createTaskDTO(projectId, assigneeIds, title, description, deadline, null);
     }
 
     // Lấy task theo ID - trả về DTO
@@ -314,6 +356,12 @@ public class TaskService {
         return convertToDTO(task);
     }
 
+    // Cập nhật trạng thái task - trả về DTO
+    public TaskDTO updateTaskStatusDTO(Long id, TaskStatus newStatus) {
+        Task task = updateTaskStatus(id, newStatus);
+        return convertToDTO(task);
+    }
+
     // Member nhận task - trả về DTO
     public TaskDTO acceptTaskDTO(Long taskId, Long memberId) {
         Task task = acceptTask(taskId, memberId);
@@ -330,5 +378,28 @@ public class TaskService {
     public TaskDTO unsubmitTaskDTO(Long taskId, Long memberId) {
         Task task = unsubmitTask(taskId, memberId);
         return convertToDTO(task);
+    }
+
+    // Tự động archive các task DONE sau 2 ngày
+    public void autoArchiveTasks() {
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(2);
+        
+        // 1. Task có submittedAt (Member nộp)
+        List<Task> tasksWithSubmit = taskRepository.findDoneTasksToArchive(cutoff);
+        // 2. Task không có submittedAt (Admin mark done trực tiếp), dùng deadline làm mốc
+        List<Task> tasksWithoutSubmit = taskRepository.findDoneTasksWithoutSubmitToArchive(cutoff);
+        
+        java.util.Set<Task> tasksToArchive = new java.util.HashSet<>();
+        tasksToArchive.addAll(tasksWithSubmit);
+        tasksToArchive.addAll(tasksWithoutSubmit);
+
+        for (Task t : tasksToArchive) {
+            t.setArchived(true);
+            t.setArchivedAt(LocalDateTime.now());
+            // Trạng thái lưu tên task [ trạng thái ] theo yêu cầu, có thể lưu vào db nếu cần 
+            // nhưng thực tế FE có thể render theo dạng "Tên Task [DONE]" dựa vào status.
+            taskRepository.save(t);
+            realtimeEventService.publishProjectChanged(t.getProject(), "TASK_ARCHIVED", null);
+        }
     }
 }

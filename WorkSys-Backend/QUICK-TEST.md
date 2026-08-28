@@ -84,7 +84,7 @@ Làm theo thứ tự dưới đây:
 ```json
 {
     "userId": 3,
-    "role": "VIEWER"
+    "role": "MEMBER"
 }
 ```
 

@@ -6,11 +6,19 @@ export function useAuth() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
+  // Lưu token và thông tin user (kể cả avatarUrl) vào sessionStorage sau khi đăng nhập/đăng ký.
   const saveSession = (data) => {
     sessionStorage.setItem("token", data.token);
     sessionStorage.setItem(
       "currentUser",
-      JSON.stringify({ id: data.id, username: data.username, email: data.email }),
+      JSON.stringify({
+        id: data.id,
+        username: data.username,
+        email: data.email,
+        avatarUrl: data.avatarUrl || null,
+        systemRole: data.systemRole,
+        status: data.status,
+      }),
     );
   };
 
@@ -19,7 +27,11 @@ export function useAuth() {
     try {
       const res = await authApi.login(form);
       saveSession(res.data);
-      navigate("/projects");
+      if (res.data.systemRole === "SYSTEM_ADMIN") {
+        navigate("/admin");
+      } else {
+        navigate("/projects");
+      }
       return { success: true };
     } catch (err) {
       return { success: false, error: err.response?.data?.error || "Đăng nhập thất bại." };
@@ -33,7 +45,11 @@ export function useAuth() {
     try {
       const res = await authApi.register(form);
       saveSession(res.data);
-      navigate("/projects");
+      if (res.data.systemRole === "SYSTEM_ADMIN") {
+        navigate("/admin");
+      } else {
+        navigate("/projects");
+      }
       return { success: true };
     } catch (err) {
       const data = err.response?.data;

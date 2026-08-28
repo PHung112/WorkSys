@@ -13,13 +13,16 @@ export default function OAuthCallbackPage() {
     const id = params.get("id");
     const username = params.get("username");
     const email = params.get("email");
+    const avatarUrl = params.get("avatarUrl");  // Lấy thêm avatarUrl từ Google
+    const systemRole = params.get("systemRole");
+    const status = params.get("status");
     const error = params.get("error");
 
     if (token) {
       // Lưu token từ Google vào sessionStorage
       sessionStorage.setItem("token", token);
 
-      // Lưu currentUser để AppNavbar + ProjectsPage dùng được ngay
+      // Lưu currentUser (kể cả avatarUrl) để AppNavbar + ProjectsPage dùng được ngay
       if (id && username) {
         sessionStorage.setItem(
           "currentUser",
@@ -27,12 +30,19 @@ export default function OAuthCallbackPage() {
             id: Number(id),
             username,
             email: email || "",
+            avatarUrl: avatarUrl ? decodeURIComponent(avatarUrl) : null,
+            systemRole: systemRole || "USER",
+            status: status || "ACTIVE",
           }),
         );
       }
 
-      // Redirect về trang projects sau khi đăng nhập thành công
-      navigate("/projects", { replace: true });
+      // Redirect về trang tương ứng
+      if (systemRole === "SYSTEM_ADMIN") {
+        navigate("/admin", { replace: true });
+      } else {
+        navigate("/projects", { replace: true });
+      }
     } else if (error) {
       // Nếu có lỗi, hiển thị và redirect về login
       alert(`Đăng nhập Google thất bại: ${error}`);

@@ -15,10 +15,19 @@ public class TaskDTO {
     private java.util.List<AssigneeDTO> assignees;
     private java.util.List<Long> acceptedUserIds;
 
+    // Link hoặc file tài liệu đính kèm mô tả task
+    private String attachmentUrl;
+
     // Link hoặc file nộp task
     private String submissionLink;
     private String submittedAt; // ISO datetime khi nộp
     private boolean late; // nộp muộn hơn deadline
+
+    // Archive
+    private boolean archived;
+    private String archivedAt;
+    
+    private String createdAt;
 
     public TaskDTO() {
     }
@@ -43,12 +52,19 @@ public class TaskDTO {
         private Long id;
         private String username;
         private String email;
+        private String avatarUrl;
 
         public AssigneeDTO() {}
         public AssigneeDTO(Long id, String username, String email) {
             this.id = id;
             this.username = username;
             this.email = email;
+        }
+        public AssigneeDTO(Long id, String username, String email, String avatarUrl) {
+            this.id = id;
+            this.username = username;
+            this.email = email;
+            this.avatarUrl = avatarUrl;
         }
 
         public Long getId() { return id; }
@@ -57,6 +73,8 @@ public class TaskDTO {
         public void setUsername(String username) { this.username = username; }
         public String getEmail() { return email; }
         public void setEmail(String email) { this.email = email; }
+        public String getAvatarUrl() { return avatarUrl; }
+        public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
     }
 
     // Getters & Setters
@@ -132,6 +150,14 @@ public class TaskDTO {
         this.acceptedUserIds = acceptedUserIds;
     }
 
+    public String getAttachmentUrl() {
+        return attachmentUrl;
+    }
+
+    public void setAttachmentUrl(String attachmentUrl) {
+        this.attachmentUrl = attachmentUrl;
+    }
+
     public String getSubmissionLink() {
         return submissionLink;
     }
@@ -154,5 +180,28 @@ public class TaskDTO {
 
     public void setLate(boolean late) {
         this.late = late;
+    }
+    public boolean isArchived() {
+        return archived;
+    }
+
+    public void setArchived(boolean archived) {
+        this.archived = archived;
+    }
+
+    public String getArchivedAt() {
+        return archivedAt;
+    }
+
+    public void setArchivedAt(String archivedAt) {
+        this.archivedAt = archivedAt;
+    }
+
+    public String getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(String createdAt) {
+        this.createdAt = createdAt;
     }
 }
