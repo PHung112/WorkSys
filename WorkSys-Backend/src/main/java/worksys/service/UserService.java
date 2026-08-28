@@ -64,11 +64,15 @@ public class UserService {
         userRepository.deleteById(id);
     }
 
-    public User login(String username, String password) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Tên đăng nhập hoặc Mật khẩu không chính xác!"));
+    public User login(String usernameOrEmail, String password) {
+        User user = userRepository.findByUsername(usernameOrEmail)
+                .orElseGet(() -> userRepository.findByEmail(usernameOrEmail)
+                        .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại")));
         if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new RuntimeException("Tên đăng nhập hoặc Mật khẩu không chính xác!");
+        }
+        if (user.getStatus() == worksys.entity.UserStatus.INACTIVE) {
+            throw new RuntimeException("Tài khoản của bạn đã bị vô hiệu hóa!");
         }
         return user;
     }
@@ -81,6 +85,9 @@ public class UserService {
         if (existingUser.isPresent()) {
             // B3.2: Nếu user đã tồn tại → cập nhật Google info
             User user = existingUser.get();
+            if (user.getStatus() == worksys.entity.UserStatus.INACTIVE) {
+                throw new RuntimeException("Tài khoản của bạn đã bị vô hiệu hóa!");
+            }
             user.setGoogleId(googleId);
             user.setAvatarUrl(avatarUrl);
             return userRepository.save(user);

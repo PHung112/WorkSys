@@ -14,3 +14,5 @@ dist/
 Thumbs.db
 
 mysql_data/
+uploads/
+WorkSys-Backend/uploads/

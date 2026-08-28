@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import GoogleLoginButton from "./GoogleLoginButton";
 
 const inputBase = "w-full bg-surface-container-low text-on-surface font-sans text-sm rounded-lg py-3 outline-none focus:bg-surface-container focus:ring-1 focus:ring-primary/50 transition-all placeholder:text-on-surface-variant/40 border border-transparent focus:border-outline-variant/30";
@@ -37,7 +37,7 @@ export default function LoginForm({ onLogin, loading }) {
       {/* Username */}
       <div className="flex flex-col gap-2">
         <label className="font-mono text-[11px] font-medium text-on-surface uppercase tracking-wider">
-          Tên đăng nhập
+          Tên đăng nhập hoặc Email
         </label>
         <div className="relative group">
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 group-focus-within:text-primary transition-colors text-[20px]">

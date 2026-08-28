@@ -4,11 +4,28 @@ import NotificationBell from "../components/common/NotificationBell";
 
 export default function AppNavbar() {
   const navigate = useNavigate();
-  const raw = sessionStorage.getItem("currentUser");
-  const currentUser = raw ? JSON.parse(raw) : null;
+  const [currentUser, setCurrentUser] = useState(() => {
+    const raw = sessionStorage.getItem("currentUser");
+    return raw ? JSON.parse(raw) : null;
+  });
   
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef(null);
+
+  // Lắng nghe sự kiện cập nhật user (ví dụ đổi avatar, đổi tên ở UserProfilePage)
+  useEffect(() => {
+    const syncUser = () => {
+      const raw = sessionStorage.getItem("currentUser");
+      setCurrentUser(raw ? JSON.parse(raw) : null);
+    };
+
+    window.addEventListener("userUpdated", syncUser);
+    window.addEventListener("storage", syncUser);
+    return () => {
+      window.removeEventListener("userUpdated", syncUser);
+      window.removeEventListener("storage", syncUser);
+    };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -80,6 +97,15 @@ export default function AppNavbar() {
                     <span className="material-symbols-outlined text-[18px]">security</span>
                     Bảo mật
                   </button>
+                  {currentUser.systemRole === 'SYSTEM_ADMIN' && (
+                    <button
+                      onClick={() => handleMenuClick('admin')}
+                      className="w-full flex items-center gap-3 px-4 py-2 hover:bg-primary/10 text-primary transition-colors cursor-pointer text-left text-sm font-medium"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">shield_person</span>
+                      Admin Panel
+                    </button>
+                  )}
                   <div className="my-1 border-t border-outline-variant/10"></div>
                   <button
                     onClick={handleLogout}

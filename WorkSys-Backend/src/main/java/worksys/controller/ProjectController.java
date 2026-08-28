@@ -18,12 +18,14 @@ public class ProjectController {
     private final ProjectService projectService;
     private final JwtUtil jwtUtil;
     private final worksys.service.NotificationService notificationService;
+    private final worksys.service.TaskService taskService;
 
     public ProjectController(ProjectService projectService, JwtUtil jwtUtil,
-            worksys.service.NotificationService notificationService) {
+            worksys.service.NotificationService notificationService, worksys.service.TaskService taskService) {
         this.projectService = projectService;
         this.jwtUtil = jwtUtil;
         this.notificationService = notificationService;
+        this.taskService = taskService;
     }
 
     // Lấy userId từ JWT trong request header
@@ -133,6 +135,16 @@ public class ProjectController {
         } catch (RuntimeException e) {
             return ResponseEntity.status(403).body(e.getMessage());
         }
+    }
+
+    // Lấy danh sách tasks đã archive của project
+    @GetMapping("/{projectId}/archived-tasks")
+    public ResponseEntity<?> getArchivedTasks(@PathVariable Long projectId, HttpServletRequest request) {
+        Long userId = getCurrentUserId(request);
+        if (!projectService.isMember(projectId, userId)) {
+            return ResponseEntity.status(403).body("Bạn không có quyền truy cập project này");
+        }
+        return ResponseEntity.ok(taskService.getArchivedTasksByProjectDTO(projectId));
     }
 
     // DTO classes

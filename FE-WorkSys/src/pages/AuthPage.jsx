@@ -1,4 +1,4 @@
-﻿import { useEffect } from "react";
+import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import LoginForm from "../components/auth/LoginForm";
@@ -13,7 +13,16 @@ export default function AuthPage() {
   useEffect(() => {
     const token = sessionStorage.getItem("token");
     if (token) {
-      navigate("/projects");
+      try {
+        const currentUser = JSON.parse(sessionStorage.getItem("currentUser") || "{}");
+        if (currentUser.systemRole === "SYSTEM_ADMIN") {
+          navigate("/admin");
+        } else {
+          navigate("/projects");
+        }
+      } catch (e) {
+        navigate("/projects");
+      }
     }
   }, [navigate]);
 

@@ -52,14 +52,18 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         // B5: Tạo JWT Token
         String token = jwtUtil.generateToken(user.getId(), user.getUsername());
 
-        // B6: Redirect về Frontend kèm token
+        // B6: Redirect về Frontend kèm token và avatarUrl để FE lưu vào sessionStorage
         // Ví dụ:
-        // http://localhost:5173/oauth/callback?token=...&id=...&username=...&email=...
+        // http://localhost:5173/oauth/callback?token=...&id=...&username=...&email=...&avatarUrl=...
+        String avatarUrl = user.getAvatarUrl() != null ? user.getAvatarUrl() : "";
         String targetUrl = redirectUrl + "/oauth/callback"
                 + "?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8)
                 + "&id=" + user.getId()
                 + "&username=" + URLEncoder.encode(user.getUsername(), StandardCharsets.UTF_8)
-                + "&email=" + URLEncoder.encode(user.getEmail(), StandardCharsets.UTF_8);
+                + "&email=" + URLEncoder.encode(user.getEmail(), StandardCharsets.UTF_8)
+                + "&avatarUrl=" + URLEncoder.encode(avatarUrl, StandardCharsets.UTF_8)
+                + "&systemRole=" + user.getSystemRole().name()
+                + "&status=" + user.getStatus().name();
 
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }

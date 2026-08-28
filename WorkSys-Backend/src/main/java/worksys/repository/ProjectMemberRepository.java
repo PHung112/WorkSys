@@ -13,5 +13,7 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
 
     Optional<ProjectMember> findByProjectAndUser(Project project, User user);
 
+    Optional<ProjectMember> findByProjectAndUser_Id(Project project, Long userId);
+
     List<ProjectMember> findByUser(User user);
 }

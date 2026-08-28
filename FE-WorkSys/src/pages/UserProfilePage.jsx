@@ -14,10 +14,9 @@ export default function UserProfilePage() {
   const [successMsg, setSuccessMsg] = useState("");
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState("");
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef(null);
 
-  // Load user data
+  // Load user data: lấy từ sessionStorage trước để render nhanh, sau đó fetch API mới nhất từ DB
   useEffect(() => {
     const saved = sessionStorage.getItem("currentUser");
     if (!saved) {
@@ -30,31 +29,88 @@ export default function UserProfilePage() {
     if (user.avatarUrl) {
       setAvatarPreview(user.avatarUrl);
     }
+
+    // Tải thông tin mới nhất từ DB để đảm bảo không bị mất avatar khi reload
+    if (user.id) {
+      userApi.getUserById(user.id)
+        .then((res) => {
+          if (res?.data) {
+            const dbUser = res.data;
+            const syncedUser = {
+              ...user,
+              username: dbUser.username || user.username,
+              email: dbUser.email || user.email,
+              avatarUrl: dbUser.avatarUrl || null,
+            };
+            sessionStorage.setItem("currentUser", JSON.stringify(syncedUser));
+            setCurrentUser(syncedUser);
+            setForm({ username: syncedUser.username || "", email: syncedUser.email || "" });
+            if (syncedUser.avatarUrl) {
+              setAvatarPreview(syncedUser.avatarUrl);
+            }
+          }
+        })
+        .catch(() => {});
+    }
   }, [navigate]);
 
-  // Cập nhật username/email và đồng bộ lại currentUser trong sessionStorage.
+  // Kiểm tra xem người dùng có thay đổi thông tin (username, email, hoặc đã chọn avatar mới) hay chưa
+  const isChanged = Boolean(
+    currentUser && (
+      form.username !== (currentUser.username || "") ||
+      form.email !== (currentUser.email || "") ||
+      avatarFile
+    )
+  );
+
+  // Cập nhật thông tin người dùng và avatar (nếu có chọn ảnh mới)
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
+    if (!isChanged) return;
+
     setError("");
     setSuccessMsg("");
     setLoading(true);
 
     try {
-      await userApi.updateUser(currentUser.id, {
-        username: form.username,
-        email: form.email,
-      });
+      let currentAvatarUrl = currentUser.avatarUrl;
 
-      // Update sessionStorage
+      // Bước 1: Nếu người dùng đã chọn ảnh mới, upload lên Cloudinary và lưu URL vào backend
+      if (avatarFile) {
+        const imageUrl = await uploadToCloudinary(avatarFile);
+        const resAvatar = await userApi.updateAvatarUrl(currentUser.id, imageUrl);
+        currentAvatarUrl = resAvatar.data.avatarUrl || imageUrl;
+        setAvatarFile(null);
+      }
+
+      // Bước 2: Nếu có thay đổi username hoặc email, gọi API cập nhật thông tin user
+      const isProfileInfoChanged =
+        form.username !== currentUser.username || form.email !== currentUser.email;
+
+      if (isProfileInfoChanged) {
+        await userApi.updateUser(currentUser.id, {
+          username: form.username,
+          email: form.email,
+        });
+      }
+
+      // Bước 3: Đồng bộ lại sessionStorage và currentUser state
       const updatedUser = {
         ...currentUser,
         username: form.username,
         email: form.email,
+        avatarUrl: currentAvatarUrl,
       };
       sessionStorage.setItem("currentUser", JSON.stringify(updatedUser));
       setCurrentUser(updatedUser);
+      if (currentAvatarUrl) {
+        setAvatarPreview(currentAvatarUrl);
+      }
 
-      setSuccessMsg("✓ Cập nhật thông tin thành công!");
+      // Bắn event để AppNavbar cập nhật lại avatar/tên ngay lập tức
+      window.dispatchEvent(new Event("userUpdated"));
+
+      setSuccessMsg("✓ Cập nhật hồ sơ thành công!");
       setTimeout(() => setSuccessMsg(""), 3000);
     } catch (err) {
       const msg = err?.response?.data?.error || "Cập nhật thất bại";
@@ -64,7 +120,7 @@ export default function UserProfilePage() {
     }
   };
 
-  // Kiểm tra file avatar hợp lệ rồi tạo preview trước khi upload.
+  // Kiểm tra file avatar hợp lệ rồi tạo preview trước khi lưu
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -89,37 +145,6 @@ export default function UserProfilePage() {
     };
     reader.readAsDataURL(file);
     setError("");
-  };
-
-  // Upload ảnh lên Cloudinary, lưu URL về backend và cập nhật session user.
-  const handleUploadAvatar = async () => {
-    if (!avatarFile) return;
-
-    setUploadingAvatar(true);
-    setError("");
-    setSuccessMsg("");
-
-    try {
-      // Step 1: Upload to Cloudinary
-      const imageUrl = await uploadToCloudinary(avatarFile);
-
-      // Step 2: Save URL to backend
-      const res = await userApi.updateAvatarUrl(currentUser.id, imageUrl);
-
-      // Step 3: Update sessionStorage with new avatar
-      const updatedUser = { ...currentUser, avatarUrl: res.data.avatarUrl };
-      sessionStorage.setItem("currentUser", JSON.stringify(updatedUser));
-      setCurrentUser(updatedUser);
-
-      setAvatarFile(null);
-      setSuccessMsg("✓ Cập nhật avatar thành công!");
-      setTimeout(() => setSuccessMsg(""), 3000);
-    } catch (err) {
-      const msg = err?.response?.data?.error || "Upload avatar thất bại";
-      setError(msg);
-    } finally {
-      setUploadingAvatar(false);
-    }
   };
 
   if (!currentUser) return null;
@@ -155,7 +180,7 @@ export default function UserProfilePage() {
                     )}
                   </div>
                   <input ref={avatarInputRef} type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
-                  <button type="button" onClick={() => avatarInputRef.current?.click()} aria-label="Upload new photo" className="absolute bottom-0 right-0 p-1.5 bg-primary text-on-primary rounded-full hover:bg-primary/90 transition-colors shadow-sm z-20">
+                  <button type="button" onClick={() => avatarInputRef.current?.click()} aria-label="Upload new photo" className="absolute bottom-0 right-0 p-1.5 bg-primary text-on-primary rounded-full hover:bg-primary/90 transition-colors shadow-sm z-20 cursor-pointer">
                     <span className="material-symbols-outlined text-[16px] block">upload</span>
                   </button>
                 </div>
@@ -163,11 +188,6 @@ export default function UserProfilePage() {
                   <h3 className="font-headline-md text-on-surface">{currentUser.username}</h3>
                   <p className="font-body-sm text-on-surface-variant">{currentUser.email}</p>
                 </div>
-                {avatarFile && (
-                  <button type="button" onClick={handleUploadAvatar} disabled={uploadingAvatar} className="px-4 py-2 bg-primary hover:bg-primary/90 text-on-primary font-label-md rounded-lg transition-colors shadow-sm disabled:opacity-50">
-                    {uploadingAvatar ? "Đang tải..." : "Lưu ảnh"}
-                  </button>
-                )}
               </div>
 
               <div className="h-px bg-outline-variant/20 w-full"></div>
@@ -184,7 +204,11 @@ export default function UserProfilePage() {
                   </div>
                 </div>
                 <div className="flex justify-end gap-3 mt-2">
-                  <button type="submit" disabled={loading} className="px-5 py-2 bg-primary text-on-primary hover:bg-primary/90 font-label-md rounded-lg shadow-sm transition-all flex items-center gap-2 disabled:opacity-50">
+                  <button
+                    type="submit"
+                    disabled={!isChanged || loading}
+                    className="px-5 py-2 bg-primary text-on-primary hover:bg-primary/90 font-label-md rounded-lg shadow-sm transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  >
                     <span className="material-symbols-outlined text-[18px]">save</span>
                     {loading ? "Đang lưu..." : "Lưu thay đổi"}
                   </button>

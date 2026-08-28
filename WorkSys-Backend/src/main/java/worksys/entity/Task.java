@@ -46,6 +46,10 @@ public class Task {
     @Column(nullable = false)
     private TaskStatus status = TaskStatus.TODO;
 
+    // Link hoặc đường dẫn file tài liệu/mô tả chi tiết khi tạo task
+    @Column(name = "attachment_url", length = 512)
+    private String attachmentUrl;
+
     // Link hoặc đường dẫn file khi nộp task
     @Column(name = "submission_link", length = 512)
     private String submissionLink;
@@ -53,6 +57,18 @@ public class Task {
     // Thời điểm nộp task
     @Column(name = "submitted_at")
     private LocalDateTime submittedAt;
+
+    // Đánh dấu task đã được chuyển vào kho lưu trữ (archive)
+    @Column(nullable = false)
+    private boolean archived = false;
+
+    // Thời điểm task được chuyển vào kho lưu trữ
+    @Column(name = "archived_at")
+    private LocalDateTime archivedAt;
+
+    // Thời gian tạo
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     public Task() {
     }
@@ -122,6 +138,14 @@ public class Task {
         this.status = status;
     }
 
+    public String getAttachmentUrl() {
+        return attachmentUrl;
+    }
+
+    public void setAttachmentUrl(String attachmentUrl) {
+        this.attachmentUrl = attachmentUrl;
+    }
+
     public String getSubmissionLink() {
         return submissionLink;
     }
@@ -136,5 +160,30 @@ public class Task {
 
     public void setSubmittedAt(LocalDateTime submittedAt) {
         this.submittedAt = submittedAt;
+    }
+
+    // Getter/Setter cho archived và archivedAt
+    public boolean isArchived() {
+        return archived;
+    }
+
+    public void setArchived(boolean archived) {
+        this.archived = archived;
+    }
+
+    public LocalDateTime getArchivedAt() {
+        return archivedAt;
+    }
+
+    public void setArchivedAt(LocalDateTime archivedAt) {
+        this.archivedAt = archivedAt;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

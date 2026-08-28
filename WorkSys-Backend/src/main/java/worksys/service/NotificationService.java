@@ -261,6 +261,15 @@ public class NotificationService {
     }
 
     // ── Helper ────────────────────────────────────────────────────────────────
+    public void createSystemAlertNotification(User recipient, String message) {
+        Notification n = new Notification();
+        n.setRecipient(recipient);
+        n.setMessage(message);
+        n.setType(NotificationType.SYSTEM_ALERT);
+        notificationRepository.save(n);
+        realtimeEventService.publishNotificationChanged(recipient.getId(), "SYSTEM_ALERT");
+    }
+
     private NotificationDTO convertToDTO(Notification n) {
         NotificationDTO dto = new NotificationDTO();
         dto.setId(n.getId());
