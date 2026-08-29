@@ -75,9 +75,9 @@ export default function UserProfilePage() {
     try {
       let currentAvatarUrl = currentUser.avatarUrl;
 
-      // Bước 1: Nếu người dùng đã chọn ảnh mới, upload lên Cloudinary và lưu URL vào backend
+      // Bước 1: Nếu người dùng đã chọn ảnh mới, upload lên Cloudinary (tự động ghi đè theo user id) và lưu URL vào backend
       if (avatarFile) {
-        const imageUrl = await uploadToCloudinary(avatarFile);
+        const imageUrl = await uploadToCloudinary(avatarFile, currentUser.id);
         const resAvatar = await userApi.updateAvatarUrl(currentUser.id, imageUrl);
         currentAvatarUrl = resAvatar.data.avatarUrl || imageUrl;
         setAvatarFile(null);
@@ -113,7 +113,7 @@ export default function UserProfilePage() {
       setSuccessMsg("✓ Cập nhật hồ sơ thành công!");
       setTimeout(() => setSuccessMsg(""), 3000);
     } catch (err) {
-      const msg = err?.response?.data?.error || "Cập nhật thất bại";
+      const msg = err?.response?.data?.error || err?.response?.data?.message || err?.message || "Cập nhật thất bại";
       setError(msg);
     } finally {
       setLoading(false);

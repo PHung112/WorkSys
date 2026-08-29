@@ -18,6 +18,7 @@ import SubmitTaskModal from "../components/projects/modals/SubmitTaskModal";
 import TransferAdminModal from "../components/projects/modals/TransferAdminModal";
 import ConfirmModal from "../components/common/ConfirmModal";
 import { subscribeRealtime } from "../realtime/wsClient";
+import { uploadFileToCloudinary } from "../config/cloudinaryConfig";
 
 // Hàm tiện ích lấy chuỗi ngày hiện tại (YYYY-MM-DD) theo giờ địa phương của máy người dùng
 const getTodayString = () => {
@@ -420,26 +421,21 @@ export default function ProjectsPage() {
     e.preventDefault();
     setFormError("");
     try {
+      let attachmentUrl = null;
       if (taskForm.file) {
-        // Gửi qua Multipart Form-Data khi có file đính kèm mô tả task
-        const formData = new FormData();
-        formData.append("projectId", selectedProject.id);
-        formData.append("title", taskForm.title);
-        if (taskForm.description) formData.append("description", taskForm.description);
-        if (taskForm.deadline) formData.append("deadline", taskForm.deadline);
-        formData.append("file", taskForm.file);
-        (taskForm.assignedToIds || []).forEach((id) => formData.append("assignedToIds", id));
-        await taskApi.createTask(formData);
-      } else {
-        // Gửi qua JSON khi không có file
-        await taskApi.createTask({
-          projectId: selectedProject.id,
-          assignedToIds: taskForm.assignedToIds,
-          title: taskForm.title,
-          description: taskForm.description,
-          deadline: taskForm.deadline || null,
-        });
+        // Tải file đính kèm lên Cloudinary
+        attachmentUrl = await uploadFileToCloudinary(taskForm.file);
       }
+
+      await taskApi.createTask({
+        projectId: selectedProject.id,
+        assignedToIds: taskForm.assignedToIds,
+        title: taskForm.title,
+        description: taskForm.description,
+        deadline: taskForm.deadline || null,
+        attachmentUrl: attachmentUrl || undefined,
+      });
+
       await refreshDetails(selectedProject.id);
       setModal(null);
       setTaskForm({
@@ -450,7 +446,7 @@ export default function ProjectsPage() {
         file: null,
       });
     } catch (err) {
-      const msg = err?.response?.data?.message;
+      const msg = err?.response?.data?.message || err?.message;
       setFormError(msg ? `Lỗi: ${msg}` : "Tạo task thất bại.");
     }
   };
@@ -498,14 +494,20 @@ export default function ProjectsPage() {
       return;
     }
     try {
+      let finalSubmissionLink = submitForm.link || "";
+
+      if (submitForm.file) {
+        // Tải file nộp bài lên Cloudinary
+        finalSubmissionLink = await uploadFileToCloudinary(submitForm.file);
+      }
+
       await taskApi.submitTask(submitForm.taskId, currentUser.id, {
-        submissionLink: submitForm.link || undefined,
-        file: submitForm.file || undefined,
+        submissionLink: finalSubmissionLink,
       });
       await refreshDetails(selectedProject.id);
       setModal(null);
     } catch (err) {
-      const msg = err?.response?.data?.message || err?.response?.data;
+      const msg = err?.response?.data?.message || err?.response?.data || err?.message;
       setFormError(msg ? `Lỗi: ${msg}` : "Nộp task thất bại.");
     }
   };

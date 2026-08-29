@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { STATUS_CFG } from "../common/statusConfig";
 import MemberProfileModal from "./modals/MemberProfileModal";
+import { triggerDownload } from "../../config/cloudinaryConfig";
 
 export default function TaskDetailDrawer({
   isOpen,
@@ -253,13 +254,24 @@ export default function TaskDetailDrawer({
                         <span className="text-xs text-on-surface-variant">Đính kèm bởi hệ thống</span>
                     </div>
                     </div>
-                    <button
-                    onClick={() => onOpenDownloadConfirm(task.attachmentUrl, task.title + " (Tài liệu)")}
-                    className="w-8 h-8 bg-surface-container-high hover:bg-primary/20 text-on-surface-variant hover:text-primary rounded-lg flex items-center justify-center transition-colors shrink-0 cursor-pointer border border-outline-variant/20"
-                    title="Tải về"
-                    >
-                    <span className="material-symbols-outlined text-[18px]">download</span>
-                    </button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <a
+                        href={task.attachmentUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="w-8 h-8 bg-surface-container-high hover:bg-primary/20 text-on-surface-variant hover:text-primary rounded-lg flex items-center justify-center transition-colors cursor-pointer border border-outline-variant/20"
+                        title="Xem trực tiếp trên web"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">visibility</span>
+                      </a>
+                      <button
+                        onClick={() => triggerDownload(task.attachmentUrl, `${task.title}_tai_lieu`)}
+                        className="w-8 h-8 bg-surface-container-high hover:bg-primary/20 text-on-surface-variant hover:text-primary rounded-lg flex items-center justify-center transition-colors shrink-0 cursor-pointer border border-outline-variant/20"
+                        title="Tải file về máy"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">download</span>
+                      </button>
+                    </div>
                 </div>
             ) : (
                 <div className="p-4 bg-surface-container border border-dashed border-outline-variant/30 rounded-xl flex items-center justify-center text-on-surface-variant/70 text-sm">
@@ -290,13 +302,25 @@ export default function TaskDetailDrawer({
                             {task.submittedAt ? formatDateTime(task.submittedAt) : "Không rõ thời gian"}
                         </div>
                     </div>
-                    <button 
-                        onClick={() => onOpenDownloadConfirm(task.submissionLink, task.title + " (Bài nộp)")} 
-                        className="px-3.5 py-2 bg-tertiary text-on-tertiary rounded-lg text-xs font-semibold flex items-center gap-1.5 hover:bg-tertiary/90 transition-colors shrink-0 cursor-pointer shadow-sm"
-                    >
-                        <span className="material-symbols-outlined text-[16px]">download</span>
-                        Tải về
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <a
+                        href={task.submissionLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-2 bg-surface-container-high hover:bg-tertiary/20 text-on-surface-variant hover:text-tertiary rounded-lg flex items-center justify-center transition-colors cursor-pointer border border-outline-variant/20"
+                        title="Xem trực tiếp trên web"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">visibility</span>
+                      </a>
+                      <button 
+                          onClick={() => triggerDownload(task.submissionLink, `${task.title}_bai_nop`)} 
+                          className="px-3.5 py-2 bg-tertiary text-on-tertiary rounded-lg text-xs font-semibold flex items-center gap-1.5 hover:bg-tertiary/90 transition-colors shrink-0 cursor-pointer shadow-sm"
+                          title="Tải file về máy"
+                      >
+                          <span className="material-symbols-outlined text-[16px]">download</span>
+                          Tải về
+                      </button>
+                    </div>
                 </div>
             ) : (
                 <div className="p-4 bg-surface-container border border-dashed border-outline-variant/30 rounded-xl flex items-center justify-center text-on-surface-variant/70 text-sm">
