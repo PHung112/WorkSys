@@ -4,6 +4,7 @@ import projectApi from "../api/projectApi";
 import taskApi from "../api/taskApi";
 import TimePicker from "../components/common/TimePicker";
 import { inputCls, labelCls, btnPrimary, btnSecondary } from "../components/common/formStyles";
+import { uploadFileToCloudinary } from "../config/cloudinaryConfig";
 
 // Hàm tiện ích lấy chuỗi ngày hôm nay định dạng YYYY-MM-DD theo giờ địa phương
 const getTodayString = () => {
@@ -164,31 +165,25 @@ export default function CreateTaskPage() {
       // Kết hợp ngày và giờ thành chuỗi ISO (YYYY-MM-DDTHH:mm:ss)
       const fullDeadline = deadline ? `${deadline}T${deadlineTime || "23:59"}:00` : null;
 
+      let attachmentUrl = null;
       if (file) {
-        // Gửi qua Multipart Form-Data khi có file đính kèm
-        const formData = new FormData();
-        formData.append("projectId", selectedProjectId);
-        formData.append("title", title);
-        if (description) formData.append("description", description);
-        if (fullDeadline) formData.append("deadline", fullDeadline);
-        formData.append("file", file);
-        assignedToIds.forEach((id) => formData.append("assignedToIds", id));
-        await taskApi.createTask(formData);
-      } else {
-        // Gửi qua JSON khi không có file
-        await taskApi.createTask({
-          projectId: Number(selectedProjectId),
-          assignedToIds,
-          title,
-          description,
-          deadline: fullDeadline,
-        });
+        // Tải file đính kèm lên Cloudinary
+        attachmentUrl = await uploadFileToCloudinary(file);
       }
+
+      await taskApi.createTask({
+        projectId: Number(selectedProjectId),
+        assignedToIds,
+        title,
+        description,
+        deadline: fullDeadline,
+        attachmentUrl: attachmentUrl || undefined,
+      });
 
       // Tạo thành công, điều hướng quay lại trang dự án
       navigate(`/projects?goto=${selectedProjectId}`);
     } catch (err) {
-      const msg = err?.response?.data?.message || err?.response?.data?.error;
+      const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message;
       setErrorMessage(msg ? `Lỗi: ${msg}` : "Tạo nhiệm vụ thất bại, vui lòng thử lại.");
     } finally {
       setSubmitting(false);

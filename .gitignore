@@ -12,6 +12,7 @@ dist/
 # system files
 .DS_Store
 Thumbs.db
+CLOUDINARY_SETUP.md
 
 mysql_data/
 uploads/
