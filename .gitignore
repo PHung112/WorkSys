@@ -13,6 +13,7 @@ dist/
 .DS_Store
 Thumbs.db
 CLOUDINARY_SETUP.md
+.env
 
 mysql_data/
 uploads/
