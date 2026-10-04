@@ -7,6 +7,7 @@ import http from "../api/axiosConfig";
 
 import ProjectSidebar from "../components/projects/ProjectSidebar";
 import ProjectDetail from "../components/projects/ProjectDetail";
+import MyTasksDetail from "../components/projects/MyTasksDetail";
 import CreateProjectModal from "../components/projects/modals/CreateProjectModal";
 import EditProjectModal from "../components/projects/modals/EditProjectModal";
 import ConfirmDeleteProjectModal from "../components/projects/modals/ConfirmDeleteProjectModal";
@@ -45,6 +46,8 @@ export default function ProjectsPage() {
   const [activeTab, setActiveTab] = useState(
     () => sessionStorage.getItem("projectsPage_activeTab") || "members"
   );
+  
+  const [showMyTasks, setShowMyTasks] = useState(false);
 
   // Modal
   const [modal, setModal] = useState(null);
@@ -143,9 +146,10 @@ export default function ProjectsPage() {
   }, []);
 
   // Chọn project: lưu cache ID vào sessionStorage để khôi phục khi quay lại trang
-  const selectProject = useCallback(async (project) => {
+  const selectProject = useCallback(async (project, tab = "members") => {
+    setShowMyTasks(false);
     setSelectedProject(project); // Đổi tên project trên header ngay lập tức
-    setActiveTab("members");
+    setActiveTab(tab);
     // Lưu ID project đang chọn vào cache
     sessionStorage.setItem("projectsPage_selectedProjectId", String(project.id));
     setIsLoadingDetails(true); // Bật vòng xoay loading che cái màn hình cũ đi
@@ -213,9 +217,9 @@ export default function ProjectsPage() {
         setMembers(mRes.data);
         setTasks(tRes.data);
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setIsLoadingDetails(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProject?.id]); // Chỉ chạy khi selectedProject.id thay đổi
 
   // Auto-select project from ?goto=id URL param (from notification click)
@@ -565,8 +569,7 @@ export default function ProjectsPage() {
 
 
   const handleLogout = () => {
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("currentUser");
+    sessionStorage.clear();
     navigate("/auth");
   };
 
@@ -580,6 +583,11 @@ export default function ProjectsPage() {
       <ProjectSidebar
         projects={projects}
         selectedProject={selectedProject}
+        showMyTasks={showMyTasks}
+        onShowMyTasks={() => {
+          setShowMyTasks(true);
+          setSelectedProject(null);
+        }}
         onSelect={selectProject}
         onCreateClick={() => {
           setProjectForm({ name: "", description: "" });
@@ -595,7 +603,17 @@ export default function ProjectsPage() {
       <div className={`flex-1 flex flex-col min-w-0 relative h-[calc(100vh-4rem)] transition-all duration-300 ease-in-out ${sidebarOpen ? "pl-72" : "pl-0"}`}>
         {/* Main Area */}
         <main className="flex-1 flex flex-col h-full overflow-hidden">
-          {!selectedProject ? (
+          {showMyTasks ? (
+            <MyTasksDetail 
+              currentUser={currentUser} 
+              onNavigateToProject={(projectId) => {
+                const target = projects.find((p) => String(p.id) === String(projectId));
+                if (target) {
+                  selectProject(target, "tasks");
+                }
+              }}
+            />
+          ) : !selectedProject ? (
             <div className="flex flex-col items-center justify-center h-full opacity-60 select-none pb-20">
               <span className="material-symbols-outlined text-[80px] text-surface-container-highest mb-4" style={{ fontVariationSettings: "'FILL' 1" }}>folder_open</span>
               <p className="text-xl font-display font-semibold text-on-surface mb-2 tracking-tight">Chọn một dự án</p>

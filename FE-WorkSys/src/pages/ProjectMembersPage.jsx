@@ -264,11 +264,10 @@ export default function ProjectMembersPage() {
               <button
                 key={tab.key}
                 onClick={() => setRoleFilter(tab.key)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                  roleFilter === tab.key
+                className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${roleFilter === tab.key
                     ? "bg-primary text-on-primary shadow-sm shadow-primary/20"
                     : "bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface border border-outline-variant/10"
-                }`}
+                  }`}
               >
                 {tab.label}
               </button>
@@ -297,11 +296,14 @@ export default function ProjectMembersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/10">
-                {filteredMembers.map((member) => {
+                {filteredMembers.map((member, index) => {
                   const memberUserId = member.userId || member.id;
                   const isSelf = memberUserId === currentUser?.id;
                   const taskCount = getMemberTaskCount(memberUserId);
                   const isMenuOpen = activeMenuMemberId === memberUserId;
+                  
+                  // Hiển thị dropdown hất lên trên nếu là 2 item cuối cùng (để không bị lún khung)
+                  const isLastFew = filteredMembers.length > 3 && index >= filteredMembers.length - 2;
 
                   return (
                     <tr
@@ -312,9 +314,8 @@ export default function ProjectMembersPage() {
                       <td className="py-4 px-5">
                         <div className="flex items-center gap-3.5">
                           <div
-                            className={`w-11 h-11 rounded-full bg-surface-container-high text-primary flex items-center justify-center font-bold overflow-hidden shrink-0 shadow-sm ring-1 ring-outline-variant/20 ${
-                              isSelf ? "border-2 border-yellow-400 shadow-yellow-400/20" : ""
-                            }`}
+                            className={`w-11 h-11 rounded-full bg-surface-container-high text-primary flex items-center justify-center font-bold overflow-hidden shrink-0 shadow-sm ring-1 ring-outline-variant/20 ${isSelf ? "border-2 border-yellow-400 shadow-yellow-400/20" : ""
+                              }`}
                           >
                             {member.avatarUrl ? (
                               <img src={member.avatarUrl} alt={member.username} className="w-full h-full object-cover" />
@@ -368,17 +369,16 @@ export default function ProjectMembersPage() {
 
                       {/* Cột 4: Nút Option 3 chấm dọc */}
                       <td className="py-4 px-5 text-right relative">
-                        <div className="inline-block relative">
+                        <div className="inline-block relative" ref={isMenuOpen ? menuRef : null}>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               setActiveMenuMemberId(isMenuOpen ? null : memberUserId);
                             }}
-                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
-                              isMenuOpen
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${isMenuOpen
                                 ? "bg-surface-container-highest text-primary shadow-sm"
                                 : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high"
-                            }`}
+                              }`}
                             title="Tùy chọn thao tác"
                           >
                             <span className="material-symbols-outlined text-[22px]">more_vert</span>
@@ -387,8 +387,7 @@ export default function ProjectMembersPage() {
                           {/* Dropdown Menu nổi */}
                           {isMenuOpen && (
                             <div
-                              ref={menuRef}
-                              className="absolute right-0 mt-1.5 w-52 bg-surface-container-high rounded-2xl shadow-2xl border border-outline-variant/20 py-2 z-30 flex flex-col animate-in fade-in zoom-in-95 duration-150"
+                              className={`absolute right-0 ${isLastFew ? "bottom-full mb-2" : "mt-1.5"} w-52 bg-surface-container-high rounded-2xl shadow-2xl border border-outline-variant/20 py-2 z-30 flex flex-col animate-in fade-in zoom-in-95 duration-150`}
                             >
                               {/* Option 1: Xem hồ sơ */}
                               <button

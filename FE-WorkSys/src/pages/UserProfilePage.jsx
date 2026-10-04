@@ -50,7 +50,7 @@ export default function UserProfilePage() {
             }
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [navigate]);
 
@@ -152,9 +152,19 @@ export default function UserProfilePage() {
   return (
     <div className="flex flex-col w-full h-full relative overflow-hidden bg-background min-h-screen">
       <div className="absolute -top-64 -right-64 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] pointer-events-none mix-blend-screen opacity-50"></div>
-      
+
       <div className="px-container-margin py-stack-lg max-w-3xl mx-auto w-full flex-1 flex flex-col gap-stack-lg z-10 relative">
         <div className="flex-1 w-full flex flex-col gap-stack-lg">
+          <div className="flex items-center mb-[-0.5rem]">
+            <button
+              onClick={() => navigate("/")}
+              className="flex items-center gap-2 px-3 py-2 -ml-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+              <span className="font-label-md">Quay lại trang chính</span>
+            </button>
+          </div>
+
           {/* Notifications area */}
           {(successMsg || error) && (
             <div className={`px-4 py-3 rounded-xl border ${successMsg ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-error/10 border-error/20 text-error'}`}>
@@ -163,9 +173,6 @@ export default function UserProfilePage() {
           )}
 
           <section id="profile" className="flex flex-col gap-stack-md mt-6 lg:mt-0">
-            <header className="flex items-baseline justify-between mb-4">
-              <h2 className="font-headline-lg text-on-background">Chỉnh sửa hồ sơ cá nhân</h2>
-            </header>
 
             <div className="bg-surface-container rounded-2xl p-6 shadow-sm flex flex-col gap-6 relative overflow-hidden group hover:shadow-md transition-shadow">
               <div className="absolute right-0 top-0 w-32 h-32 bg-primary-container/10 rounded-bl-full translate-x-1/2 -translate-y-1/2 transition-transform group-hover:scale-110 duration-500 pointer-events-none"></div>

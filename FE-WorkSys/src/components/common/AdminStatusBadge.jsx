@@ -23,14 +23,14 @@ const AdminStatusBadge = ({ type, value }) => {
       return (
         <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-500 border border-green-500/20 inline-flex items-center gap-1">
           <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-          Active
+          Hoạt động
         </span>
       );
     }
     return (
       <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-outline-variant/20 text-on-surface-variant border border-outline-variant/30 inline-flex items-center gap-1">
         <span className="w-1.5 h-1.5 rounded-full bg-outline-variant"></span>
-        Inactive
+        Vô hiệu hóa
       </span>
     );
   }
