@@ -32,48 +32,50 @@ export default function HomePage() {
       <main className="max-w-7xl mx-auto px-6 pt-12 md:pt-20 pb-24 space-y-28 md:space-y-36">
 
         {/* ===================== PHẦN 1: HERO SECTION ===================== */}
-        <section className="relative text-center flex flex-col items-center pt-4 md:pt-8">
-          {/* Pill Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-surface-container-low border border-outline-variant/20 backdrop-blur-md mb-8 hover:border-primary/50 transition-colors shadow-sm cursor-default">
-            <span className="material-symbols-outlined text-primary text-base animate-pulse">bolt</span>
-            <span className="font-mono text-xs uppercase tracking-wider text-on-surface-variant">
-              Quản lý dự án thế hệ mới
-            </span>
-            <span className="w-1.5 h-1.5 rounded-full bg-primary/80" />
-            <span className="font-mono text-xs text-primary font-medium">v2.4 Release</span>
-          </div>
-
-          {/* Heading H1 (2 Lines) */}
-          <h1 className="font-display font-extrabold text-4xl sm:text-6xl lg:text-7xl tracking-tight text-on-background max-w-4xl leading-[1.12]">
-            Tối ưu hóa nhịp điệu công việc
-            <span className="block mt-2 bg-clip-text text-transparent bg-gradient-to-r from-primary via-indigo-400 to-tertiary">
-              Nhanh chóng & Chuẩn xác
-            </span>
-          </h1>
-
-          {/* Description */}
-          <p className="mt-6 text-base sm:text-lg lg:text-xl text-on-surface-variant max-w-2xl font-sans leading-relaxed">
-            Hợp nhất giao việc, tiến độ Kanban, phân quyền tổ chức và dữ liệu phân tích theo thời gian thực trong một không gian tối giản, trực quan.
-          </p>
-
-          {/* CTA & Actions */}
-          <div className="mt-10 flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-            <button
-              onClick={() => navigate("/auth?tab=register")}
-              className="cursor-pointer group relative w-full sm:w-auto px-8 py-4 rounded-2xl bg-primary text-on-primary font-semibold text-base shadow-[0_0_35px_-6px_rgba(99,102,241,0.5)] hover:shadow-[0_0_50px_-2px_rgba(99,102,241,0.7)] transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 overflow-hidden"
-            >
-              <span className="relative z-10">Dùng miễn phí ngay</span>
-              <span className="material-symbols-outlined relative z-10 text-lg transition-transform duration-300 group-hover:translate-x-1.5">
-                arrow_forward
+        <section className="relative w-full">
+          {/* Hero Text Wrapper (chiếm 1 màn hình) */}
+          <div className="min-h-[calc(100vh-80px)] flex flex-col items-center justify-center text-center pb-20">
+            {/* Pill Badge */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-surface-container-low border border-outline-variant/20 backdrop-blur-md mb-8 hover:border-primary/50 transition-colors shadow-sm cursor-default">
+              <span className="material-symbols-outlined text-primary text-base animate-pulse">bolt</span>
+              <span className="font-mono text-xs uppercase tracking-wider text-on-surface-variant">
+                Quản lý dự án thế hệ mới
               </span>
-              <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/15 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
-            </button>
+              <span className="w-1.5 h-1.5 rounded-full bg-primary/80" />
+              <span className="font-mono text-xs text-primary font-medium">v2.4 Release</span>
+            </div>
 
+            {/* Heading H1 (2 Lines) */}
+            <h1 className="font-display font-extrabold text-3xl sm:text-4xl lg:text-6xl tracking-tight text-on-background max-w-4xl leading-[1.12]">
+              Tối ưu hóa nhịp điệu công việc
+              <span className="block mt-2 bg-clip-text text-transparent bg-gradient-to-r from-primary via-indigo-400 to-tertiary">
+                Nhanh chóng & Chuẩn xác
+              </span>
+            </h1>
+
+            {/* Description */}
+            <p className="mt-6 text-base sm:text-lg lg:text-xl text-on-surface-variant max-w-2xl font-sans leading-relaxed">
+              Hợp nhất giao việc, tiến độ Kanban, phân quyền tổ chức và dữ liệu phân tích theo thời gian thực trong một không gian tối giản, trực quan.
+            </p>
+
+            {/* CTA & Actions */}
+            <div className="mt-10 flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+              <button
+                onClick={() => navigate("/auth?tab=register")}
+                className="cursor-pointer group relative w-full sm:w-auto px-8 py-4 rounded-2xl bg-primary text-on-primary font-semibold text-base shadow-[0_0_35px_-6px_rgba(99,102,241,0.5)] hover:shadow-[0_0_50px_-2px_rgba(99,102,241,0.7)] transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 overflow-hidden"
+              >
+                <span className="relative z-10">Dùng miễn phí ngay</span>
+                <span className="material-symbols-outlined relative z-10 text-lg transition-transform duration-300 group-hover:translate-x-1.5">
+                  arrow_forward
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/15 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
+              </button>
+
+            </div>
           </div>
-
 
           {/* 3D Dashboard Mockup (21:9 Aspect Ratio) */}
-          <div className="mt-14 w-full relative">
+          <div className="w-full relative">
             <div className="relative mx-auto rounded-3xl p-2.5 sm:p-3.5 bg-gradient-to-b from-outline-variant/30 via-outline-variant/10 to-transparent shadow-2xl backdrop-blur-sm border border-outline-variant/20">
               <div className="w-full aspect-[21/9] min-h-[300px] md:min-h-[440px] rounded-2xl bg-surface-container-lowest border border-outline-variant/20 overflow-hidden relative flex flex-col shadow-inner">
 
