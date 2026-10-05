@@ -75,6 +75,16 @@ export default function SecurityPage() {
       
       <div className="px-container-margin py-stack-lg max-w-3xl mx-auto w-full flex-1 flex flex-col gap-stack-lg z-10 relative">
         <div className="flex-1 w-full flex flex-col gap-stack-lg">
+          <div className="flex items-center mb-[-0.5rem]">
+            <button
+              onClick={() => navigate("/")}
+              className="flex items-center gap-2 px-3 py-2 -ml-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+              <span className="font-label-md">Quay lại trang chính</span>
+            </button>
+          </div>
+
           {/* Notifications area */}
           {(successMsg || error) && (
             <div className={`px-4 py-3 rounded-xl border ${successMsg ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-error/10 border-error/20 text-error'}`}>

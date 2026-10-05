@@ -380,9 +380,9 @@ public class TaskService {
         return convertToDTO(task);
     }
 
-    // Tự động archive các task DONE sau 2 ngày
+    // Tự động archive các task DONE sau 7 ngày
     public void autoArchiveTasks() {
-        LocalDateTime cutoff = LocalDateTime.now().minusDays(2);
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(7);
         
         // 1. Task có submittedAt (Member nộp)
         List<Task> tasksWithSubmit = taskRepository.findDoneTasksToArchive(cutoff);

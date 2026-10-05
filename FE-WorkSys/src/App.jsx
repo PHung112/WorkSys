@@ -13,6 +13,7 @@ import SecurityPage from "./pages/SecurityPage";
 import CreateTaskPage from "./pages/CreateTaskPage";
 import OAuthCallbackPage from "./pages/OAuthCallbackPage";
 import ProjectMembersPage from "./pages/ProjectMembersPage";
+import ProjectArchivePage from "./pages/ProjectArchivePage";
 import AdminLayout from "./layouts/AdminLayout";
 import AdminRoute from "./components/common/AdminRoute";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
@@ -31,7 +32,7 @@ function Layout() {
   const isAuthenticated = !!sessionStorage.getItem("token");
   const isProjectsPage = location.pathname.startsWith("/projects");
   const isAdminRoute = location.pathname.startsWith("/admin");
-  
+
   if (isAdminRoute && isAuthenticated) {
     return (
       <AdminRoute>
@@ -60,6 +61,7 @@ function Layout() {
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/projects/:projectId/members" element={<ProjectMembersPage />} />
         <Route path="/projects/:projectId/new-task" element={<CreateTaskPage />} />
+        <Route path="/projects/:projectId/archive" element={<ProjectArchivePage />} />
         <Route path="/tasks/new" element={<CreateTaskPage />} />
         <Route path="/taskpage" element={<CreateTaskPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -4,7 +4,6 @@ import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
 import taskApi from "../../api/taskApi";
 import { STATUS_CFG } from "../common/statusConfig";
 import AiChatModal from "./AiChatModal";
-import ArchivedTasksModal from "./modals/ArchivedTasksModal";
 import TaskDetailDrawer from "./TaskDetailDrawer";
 
 const KANBAN_COLUMNS = ["TODO", "IN_PROGRESS", "SUBMITTED", "DONE"];
@@ -39,7 +38,6 @@ export default function ProjectDetail({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [assigneesModalTask, setAssigneesModalTask] = useState(null); // Task đang xem popup danh sách người thực hiện
   const [isAiChatOpen, setIsAiChatOpen] = useState(false); // trạng thái mở/đóng modal chat AI
-  const [isArchiveOpen, setIsArchiveOpen] = useState(false); // trạng thái mở/đóng kho lưu trữ
   const menuRef = useRef(null);
 
   // Sắp xếp danh sách assignees của task: đưa user hiện tại lên đầu tiên
@@ -197,7 +195,7 @@ export default function ProjectDetail({
           <div className="flex flex-col">
             <div className="flex items-center gap-stack-sm mb-1">
               <h1 className="font-display text-3xl font-bold text-on-background m-0 tracking-tight">{selectedProject?.name}</h1>
-              <span className="px-2 py-1 bg-surface-container-high rounded-full font-label-xs text-label-xs text-on-surface-variant ml-2 tracking-widest uppercase border border-outline-variant/10">Active</span>
+              <span className="px-2 py-1 bg-surface-container-high rounded-full font-label-xs text-label-xs text-on-surface-variant ml-2 tracking-widest uppercase border border-outline-variant/10">Đang hoạt động</span>
             </div>
             <p className="font-body-lg text-body-lg text-on-surface-variant m-0 max-w-xl">
               {selectedProject?.description || "Không có mô tả cho dự án này."}
@@ -237,7 +235,7 @@ export default function ProjectDetail({
 
           {(myRole === "ADMIN" || myRole === "MANAGER") && (
             <button onClick={onOpenCreateTask} className="h-10 px-4 bg-primary text-on-primary font-label-md text-label-md rounded-lg flex items-center gap-2 hover:bg-primary-fixed hover:text-on-primary-fixed transition-colors shadow-md shadow-primary/20 cursor-pointer">
-              <span className="material-symbols-outlined text-[18px]">add</span> New Task
+              <span className="material-symbols-outlined text-[18px]">add</span> Nhiệm vụ mới
             </button>
           )}
 
@@ -254,7 +252,7 @@ export default function ProjectDetail({
                 <span className="material-symbols-outlined text-[16px] text-on-surface-variant">group</span>
                 Quản lý thành viên
               </button>
-              <button onClick={() => { setIsArchiveOpen(true); setIsMenuOpen(false); }} className="text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-highest transition-colors flex items-center gap-2 cursor-pointer">
+              <button onClick={() => { navigate(`/projects/${selectedProject.id}/archive`); setIsMenuOpen(false); }} className="text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-highest transition-colors flex items-center gap-2 cursor-pointer">
                 <span className="material-symbols-outlined text-[16px] text-on-surface-variant">inventory_2</span>
                 Kho lưu trữ
               </button>
@@ -298,34 +296,34 @@ export default function ProjectDetail({
         <div className="bg-surface-container-low rounded-2xl p-stack-md flex flex-col md:flex-row gap-stack-lg items-center justify-between border border-outline-variant/10 shadow-sm">
           <div className="flex items-center gap-stack-lg w-full md:w-auto shrink-0">
             <div className="flex flex-col">
-              <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider mb-1">Total Tasks</span>
-                  <span className="font-display text-3xl font-bold text-on-background">{stats.total}</span>
-                </div>
-                <div className="w-px h-8 bg-surface-container-highest hidden md:block"></div>
-                <div className="flex flex-col">
-                  <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider mb-1">Completed</span>
-                  <span className="font-display text-3xl font-bold text-primary">{stats.completed}</span>
-                </div>
-                <div className="w-px h-8 bg-surface-container-highest hidden md:block"></div>
-                <div className="flex flex-col">
-                  <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider mb-1">Overdue</span>
-                  <span className="font-display text-3xl font-bold text-error">{stats.overdue}</span>
-                </div>
-              </div>
-              <div className="w-full md:max-w-md flex flex-col gap-2">
-                <div className="flex justify-between items-end">
-                  <span className="font-label-md text-label-md text-on-surface">Project Progress</span>
-                  <span className="font-label-md text-label-md text-primary font-bold">{stats.progress}%</span>
-                </div>
-                <div className="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
-                  <div className="h-full bg-primary rounded-full transition-all duration-500 ease-out" style={{ width: `${stats.progress}%` }}></div>
-                </div>
-              </div>
+              <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider mb-1">Tổng nhiệm vụ</span>
+              <span className="font-display text-3xl font-bold text-on-background">{stats.total}</span>
+            </div>
+            <div className="w-px h-8 bg-surface-container-highest hidden md:block"></div>
+            <div className="flex flex-col">
+              <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider mb-1">Hoàn thành</span>
+              <span className="font-display text-3xl font-bold text-primary">{stats.completed}</span>
+            </div>
+            <div className="w-px h-8 bg-surface-container-highest hidden md:block"></div>
+            <div className="flex flex-col">
+              <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider mb-1">Quá hạn</span>
+              <span className="font-display text-3xl font-bold text-error">{stats.overdue}</span>
             </div>
           </div>
+          <div className="w-full md:max-w-md flex flex-col gap-2">
+            <div className="flex justify-between items-end">
+              <span className="font-label-md text-label-md text-on-surface">Tiến trình dự án</span>
+              <span className="font-label-md text-label-md text-primary font-bold">{stats.progress}%</span>
+            </div>
+            <div className="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+              <div className="h-full bg-primary rounded-full transition-all duration-500 ease-out" style={{ width: `${stats.progress}%` }}></div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-          {/* Kanban Board */}
-          <DragDropContext onDragEnd={handleDragEnd}>
+      {/* Kanban Board */}
+      <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex-1 px-4 overflow-x-auto flex justify-center gap-4 snap-x snap-mandatory custom-scrollbar min-h-0">
           {KANBAN_COLUMNS.map((status) => {
             const columnTasks = tasksByStatus[status];
@@ -356,7 +354,7 @@ export default function ProjectDetail({
                               /* Chỉ ADMIN/MANAGER mới nhận dragHandleProps — MEMBER không được kéo */
                               {...(myRole !== "MEMBER" ? dragProvided.dragHandleProps : {})}
                               onClick={() => openDrawer(t)}
-                              className={`rounded-xl p-stack-md flex flex-col gap-stack-sm cursor-pointer transition-all group relative overflow-hidden border shrink-0 ${t.assignees?.some(u => u.id === currentUser?.id)
+                              className={`rounded-xl p-stack-md flex h-[145px] flex-col gap-stack-sm cursor-pointer transition-all group relative overflow-hidden border shrink-0 ${t.assignees?.some(u => u.id === currentUser?.id)
                                 ? "bg-yellow-500/10 hover:bg-yellow-500/20 border-yellow-500/50 shadow-md shadow-yellow-500/10"
                                 : "bg-surface-container hover:bg-surface-container-high border-outline-variant/10 shadow-sm"
                                 } ${dragSnapshot.isDragging ? "shadow-xl shadow-background/50 scale-[1.02] rotate-1 z-50 ring-1 ring-primary/40" : ""}`}
@@ -377,7 +375,7 @@ export default function ProjectDetail({
                               </div>
                               <h4 className="font-body-sm text-sm font-semibold text-on-background line-clamp-2 mt-1">{t.title}</h4>
 
-                              <div className="flex items-center justify-between mt-3 pt-3 border-t border-surface-container-highest/50">
+                              <div className="flex items-center justify-between mt-auto pt-3 border-t border-surface-container-highest/50">
                                 <div className="flex items-center gap-2 text-on-surface-variant font-label-xs text-label-xs">
                                   <div className="flex items-center gap-1">
                                     <span className="material-symbols-outlined !text-[16px]">calendar_today</span>
@@ -445,7 +443,7 @@ export default function ProjectDetail({
                       {columnTasks.length === 0 && !snapshot.isDraggingOver && (
                         <div className="flex flex-col items-center justify-center h-[145px] border-2 border-dashed border-surface-container-high rounded-xl opacity-50 shrink-0">
                           <span className="material-symbols-outlined text-[24px] text-on-surface-variant mb-2">assignment</span>
-                          <span className="text-label-xs text-on-surface-variant uppercase tracking-wider">Empty</span>
+                          <span className="text-label-xs text-on-surface-variant uppercase tracking-wider">Trống</span>
                         </div>
                       )}
                     </div>
@@ -536,12 +534,6 @@ export default function ProjectDetail({
         isOpen={isAiChatOpen}
         onClose={() => setIsAiChatOpen(false)}
         projectId={selectedProject?.id}
-      />
-
-      <ArchivedTasksModal
-        isOpen={isArchiveOpen}
-        onClose={() => setIsArchiveOpen(false)}
-        archivedTasks={archivedTasks}
       />
     </div>
   );

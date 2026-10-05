@@ -38,8 +38,7 @@ export default function AppNavbar() {
   }, []);
 
   const handleLogout = () => {
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("currentUser");
+    sessionStorage.clear();
     setIsProfileOpen(false);
     navigate("/auth");
   };
@@ -52,9 +51,14 @@ export default function AppNavbar() {
   return (
     <header className="sticky top-0 w-full z-50 bg-background/60 backdrop-blur-xl border-b border-white/20">
       <div className="h-16 w-full px-10 flex items-center justify-between">
-        <button onClick={() => navigate('/projects')} className="flex items-center gap-4 hover:opacity-80 transition cursor-pointer">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center font-bold text-lg text-on-primary">W</div>
-          <span className="font-sans text-xl font-bold text-on-surface tracking-tight">WorkSys</span>
+        <button onClick={() => navigate('/projects')} className="flex items-center gap-3 group cursor-pointer hover:opacity-90 transition-opacity">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-tertiary flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform duration-300">
+            <span className="material-symbols-outlined text-on-primary text-2xl">layers</span>
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span className="font-display font-bold text-2xl tracking-tight text-on-background">WorkSys</span>
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+          </div>
         </button>
 
         <div className="flex items-center gap-4">

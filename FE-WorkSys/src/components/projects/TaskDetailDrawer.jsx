@@ -38,14 +38,14 @@ export default function TaskDetailDrawer({
 
   const getDeadlineStatus = (deadline) => {
     if (!deadline) return { label: "Không có", color: "text-on-surface-variant", bg: "bg-transparent border-transparent" };
-    
+
     let deadlineDate;
     if (deadline.includes("T")) {
-        deadlineDate = new Date(deadline.split("T")[0]);
+      deadlineDate = new Date(deadline.split("T")[0]);
     } else {
-        deadlineDate = new Date(deadline);
+      deadlineDate = new Date(deadline);
     }
-    
+
     // reset time for today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -107,9 +107,8 @@ export default function TaskDetailDrawer({
     <>
       {/* Task Detail Drawer */}
       <div
-        className={`fixed inset-y-0 right-0 w-[500px] bg-surface-container shadow-2xl transform transition-transform duration-300 ease-in-out z-[80] border-l border-outline-variant/20 flex flex-col ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
+        className={`fixed inset-y-0 right-0 w-[500px] bg-surface-container shadow-2xl transform transition-transform duration-300 ease-in-out z-[80] border-l border-outline-variant/20 flex flex-col ${isOpen ? "translate-x-0" : "translate-x-full"
+          }`}
       >
         <div className="flex items-center justify-between p-stack-md border-b border-surface-container-highest shrink-0">
           <div className="flex items-center gap-3">
@@ -129,15 +128,15 @@ export default function TaskDetailDrawer({
           {/* Header Area */}
           <div>
             <div className="flex items-center gap-1.5 text-primary mb-2">
-                <span className="material-symbols-outlined text-[16px]">folder</span>
-                <span className="font-label-xs text-xs font-semibold uppercase tracking-wider">{projectName}</span>
+              <span className="material-symbols-outlined text-[16px]">folder</span>
+              <span className="font-label-xs text-xs font-semibold uppercase tracking-wider">{projectName}</span>
             </div>
             <h2 className="font-display text-2xl font-bold text-on-background mb-4 tracking-tight leading-tight">
               {task.title}
             </h2>
-            
+
             <div className="flex flex-col gap-4 text-sm font-body-sm bg-surface-container-low p-5 rounded-xl border border-outline-variant/10">
-              
+
               {/* Deadline */}
               <div className="flex items-center gap-4">
                 <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider w-[120px] shrink-0">
@@ -152,24 +151,24 @@ export default function TaskDetailDrawer({
                   </div>
                   {task.deadline && task.status !== "DONE" && task.status !== "SUBMITTED" && (
                     <span className={`px-2 py-0.5 rounded font-bold text-[10px] border uppercase tracking-wider ${deadlineStatus.bg} ${deadlineStatus.color}`}>
-                        {deadlineStatus.label}
+                      {deadlineStatus.label}
                     </span>
                   )}
                 </div>
               </div>
-              
+
               {/* Created At */}
               {task.createdAt && (
                 <div className="flex items-center gap-4">
-                    <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider w-[120px] shrink-0">
+                  <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider w-[120px] shrink-0">
                     Ngày tạo
-                    </span>
-                    <div className="flex items-center gap-1.5 text-on-surface-variant font-medium">
+                  </span>
+                  <div className="flex items-center gap-1.5 text-on-surface-variant font-medium">
                     <span className="material-symbols-outlined text-[18px]">
-                        history
+                      history
                     </span>
                     {formatDateTime(task.createdAt)}
-                    </div>
+                  </div>
                 </div>
               )}
 
@@ -188,11 +187,10 @@ export default function TaskDetailDrawer({
                             key={u.id}
                             onClick={() => handleUserClick(u)}
                             style={{ zIndex: sortedAssignees.length - index }}
-                            className={`group relative flex items-center justify-center w-9 h-9 rounded-full ring-2 ring-surface-container-low transition-all duration-200 cursor-pointer hover:scale-125 hover:!z-50 hover:shadow-xl ${
-                              isMe
-                                ? "bg-yellow-500/20 text-yellow-500 border border-yellow-500/60 shadow-sm shadow-yellow-500/20"
-                                : "bg-surface-container-highest text-primary border border-outline-variant/30"
-                            }`}
+                            className={`group relative flex items-center justify-center w-9 h-9 rounded-full ring-2 ring-surface-container-low transition-all duration-200 cursor-pointer hover:scale-125 hover:!z-50 hover:shadow-xl ${isMe
+                              ? "bg-yellow-500/20 text-yellow-500 border border-yellow-500/60 shadow-sm shadow-yellow-500/20"
+                              : "bg-surface-container-highest text-primary border border-outline-variant/30"
+                              }`}
                           >
                             {u.avatarUrl ? (
                               <img
@@ -229,8 +227,8 @@ export default function TaskDetailDrawer({
           {/* Description */}
           <div className="flex flex-col gap-3">
             <span className="text-[15px] font-bold text-on-surface uppercase tracking-wider border-b border-surface-container-highest pb-2 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px] text-primary">description</span>
-                Mô tả chi tiết
+              <span className="material-symbols-outlined text-[18px] text-primary">description</span>
+              Mô tả chi tiết
             </span>
             <p className="text-[14px] text-on-surface-variant leading-relaxed whitespace-pre-wrap bg-surface-container p-4 rounded-xl border border-outline-variant/10 min-h-[80px]">
               {task.description || "Chưa có mô tả chi tiết cho task này."}
@@ -240,92 +238,92 @@ export default function TaskDetailDrawer({
           {/* Attachments */}
           <div className="flex flex-col gap-3">
             <span className="text-[15px] font-bold text-on-surface uppercase tracking-wider border-b border-surface-container-highest pb-2 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px] text-primary">attach_file</span>
-                Tài liệu đính kèm
+              <span className="material-symbols-outlined text-[18px] text-primary">attach_file</span>
+              Tài liệu đính kèm
             </span>
             {task.attachmentUrl ? (
-                <div className="p-3 bg-surface-container-high/60 border border-outline-variant/20 rounded-xl flex items-center justify-between group hover:bg-surface-container-highest/60 transition-colors">
-                    <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary shrink-0">
-                        <span className="material-symbols-outlined text-[20px]">description</span>
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                        <span className="truncate font-medium text-sm text-on-surface">Tài liệu chi tiết task</span>
-                        <span className="text-xs text-on-surface-variant">Đính kèm bởi hệ thống</span>
-                    </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <a
-                        href={task.attachmentUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="w-8 h-8 bg-surface-container-high hover:bg-primary/20 text-on-surface-variant hover:text-primary rounded-lg flex items-center justify-center transition-colors cursor-pointer border border-outline-variant/20"
-                        title="Xem trực tiếp trên web"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">visibility</span>
-                      </a>
-                      <button
-                        onClick={() => triggerDownload(task.attachmentUrl, `${task.title}_tai_lieu`)}
-                        className="w-8 h-8 bg-surface-container-high hover:bg-primary/20 text-on-surface-variant hover:text-primary rounded-lg flex items-center justify-center transition-colors shrink-0 cursor-pointer border border-outline-variant/20"
-                        title="Tải file về máy"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">download</span>
-                      </button>
-                    </div>
+              <div className="p-3 bg-surface-container-high/60 border border-outline-variant/20 rounded-xl flex items-center justify-between group hover:bg-surface-container-highest/60 transition-colors">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary shrink-0">
+                    <span className="material-symbols-outlined text-[20px]">description</span>
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="truncate font-medium text-sm text-on-surface">Tài liệu chi tiết</span>
+                    <span className="text-xs text-on-surface-variant">Đính kèm bởi hệ thống</span>
+                  </div>
                 </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <a
+                    href={task.attachmentUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-8 h-8 bg-surface-container-high hover:bg-primary/20 text-on-surface-variant hover:text-primary rounded-lg flex items-center justify-center transition-colors cursor-pointer border border-outline-variant/20"
+                    title="Xem trực tiếp trên web"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">visibility</span>
+                  </a>
+                  <button
+                    onClick={() => triggerDownload(task.attachmentUrl, `${task.title}_tai_lieu`)}
+                    className="w-8 h-8 bg-surface-container-high hover:bg-primary/20 text-on-surface-variant hover:text-primary rounded-lg flex items-center justify-center transition-colors shrink-0 cursor-pointer border border-outline-variant/20"
+                    title="Tải file về máy"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">download</span>
+                  </button>
+                </div>
+              </div>
             ) : (
-                <div className="p-4 bg-surface-container border border-dashed border-outline-variant/30 rounded-xl flex items-center justify-center text-on-surface-variant/70 text-sm">
-                    Chưa có tài liệu đính kèm
-                </div>
+              <div className="p-4 bg-surface-container border border-dashed border-outline-variant/30 rounded-xl flex items-center justify-center text-on-surface-variant/70 text-sm">
+                Chưa có tài liệu đính kèm
+              </div>
             )}
           </div>
 
           {/* Submission */}
           <div className="flex flex-col gap-3">
             <span className="text-[15px] font-bold text-on-surface uppercase tracking-wider border-b border-surface-container-highest pb-2 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px] text-tertiary">check_circle</span>
-                Bài nộp
+              <span className="material-symbols-outlined text-[18px] text-tertiary">check_circle</span>
+              Trạng thái
             </span>
             {task.submissionLink ? (
-                <div className="p-4 bg-tertiary/10 border border-tertiary/20 rounded-xl flex items-center justify-between gap-3">
-                    <div className="flex flex-col min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="font-semibold text-sm text-on-surface">Đã nộp bài</span>
-                            {task.late && (
-                                <span className="px-2 py-0.5 bg-error/15 text-error border border-error/30 rounded font-label-xs text-[11px] font-bold tracking-wide">
-                                    Nộp muộn
-                                </span>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs text-on-surface-variant">
-                            <span className="material-symbols-outlined text-[14px]">schedule</span>
-                            {task.submittedAt ? formatDateTime(task.submittedAt) : "Không rõ thời gian"}
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <a
-                        href={task.submissionLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="p-2 bg-surface-container-high hover:bg-tertiary/20 text-on-surface-variant hover:text-tertiary rounded-lg flex items-center justify-center transition-colors cursor-pointer border border-outline-variant/20"
-                        title="Xem trực tiếp trên web"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">visibility</span>
-                      </a>
-                      <button 
-                          onClick={() => triggerDownload(task.submissionLink, `${task.title}_bai_nop`)} 
-                          className="px-3.5 py-2 bg-tertiary text-on-tertiary rounded-lg text-xs font-semibold flex items-center gap-1.5 hover:bg-tertiary/90 transition-colors shrink-0 cursor-pointer shadow-sm"
-                          title="Tải file về máy"
-                      >
-                          <span className="material-symbols-outlined text-[16px]">download</span>
-                          Tải về
-                      </button>
-                    </div>
+              <div className="p-4 bg-tertiary/10 border border-tertiary/20 rounded-xl flex items-center justify-between gap-3">
+                <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-semibold text-sm text-on-surface">Đã nộp</span>
+                    {task.late && (
+                      <span className="px-2 py-0.5 bg-error/15 text-error border border-error/30 rounded font-label-xs text-[11px] font-bold tracking-wide">
+                        Nộp muộn
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-on-surface-variant">
+                    <span className="material-symbols-outlined text-[14px]">schedule</span>
+                    {task.submittedAt ? formatDateTime(task.submittedAt) : "Không rõ thời gian"}
+                  </div>
                 </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <a
+                    href={task.submissionLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-2 bg-surface-container-high hover:bg-tertiary/20 text-on-surface-variant hover:text-tertiary rounded-lg flex items-center justify-center transition-colors cursor-pointer border border-outline-variant/20"
+                    title="Xem trực tiếp trên web"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">visibility</span>
+                  </a>
+                  <button
+                    onClick={() => triggerDownload(task.submissionLink, `${task.title}_bai_nop`)}
+                    className="px-3.5 py-2 bg-tertiary text-on-tertiary rounded-lg text-xs font-semibold flex items-center gap-1.5 hover:bg-tertiary/90 transition-colors shrink-0 cursor-pointer shadow-sm"
+                    title="Tải file về máy"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">download</span>
+                    Tải về
+                  </button>
+                </div>
+              </div>
             ) : (
-                <div className="p-4 bg-surface-container border border-dashed border-outline-variant/30 rounded-xl flex items-center justify-center text-on-surface-variant/70 text-sm">
-                    Chưa có bài nộp
-                </div>
+              <div className="p-4 bg-surface-container border border-dashed border-outline-variant/30 rounded-xl flex items-center justify-center text-on-surface-variant/70 text-sm">
+                Chưa nộp
+              </div>
             )}
           </div>
 
@@ -353,7 +351,7 @@ export default function TaskDetailDrawer({
                   className="flex-1 py-3 bg-tertiary text-on-tertiary rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity shadow-md flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[20px]">publish</span>
-                  Nộp bài
+                  Nộp
                 </button>
               )}
               {task.status === "SUBMITTED" && isAssignee && (
@@ -399,9 +397,8 @@ export default function TaskDetailDrawer({
 
       {/* Drawer Backdrop */}
       <div
-        className={`fixed inset-0 bg-background/60 backdrop-blur-sm z-[70] transition-opacity duration-300 ${
-          isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        }`}
+        className={`fixed inset-0 bg-background/60 backdrop-blur-sm z-[70] transition-opacity duration-300 ${isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          }`}
         onClick={onClose}
       ></div>
 
