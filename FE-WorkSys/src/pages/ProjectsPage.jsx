@@ -8,7 +8,7 @@ import http from "../api/axiosConfig";
 import ProjectSidebar from "../components/projects/ProjectSidebar";
 import ProjectDetail from "../components/projects/ProjectDetail";
 import MyTasksDetail from "../components/projects/MyTasksDetail";
-import CreateProjectModal from "../components/projects/modals/CreateProjectModal";
+import CreateProjectView from "../components/projects/CreateProjectView";
 import EditProjectModal from "../components/projects/modals/EditProjectModal";
 import ConfirmDeleteProjectModal from "../components/projects/modals/ConfirmDeleteProjectModal";
 import InviteMemberModal from "../components/projects/modals/InviteMemberModal";
@@ -48,6 +48,7 @@ export default function ProjectsPage() {
   );
   
   const [showMyTasks, setShowMyTasks] = useState(false);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
 
   // Modal
   const [modal, setModal] = useState(null);
@@ -148,6 +149,7 @@ export default function ProjectsPage() {
   // Chọn project: lưu cache ID vào sessionStorage để khôi phục khi quay lại trang
   const selectProject = useCallback(async (project, tab = "members") => {
     setShowMyTasks(false);
+    setIsCreatingProject(false);
     setSelectedProject(project); // Đổi tên project trên header ngay lập tức
     setActiveTab(tab);
     // Lưu ID project đang chọn vào cache
@@ -314,7 +316,7 @@ export default function ProjectsPage() {
         description: projectForm.description,
       });
       await loadProjects();
-      setModal(null);
+      setIsCreatingProject(false);
       setProjectForm({ name: "", description: "" });
     } catch {
       setFormError("Tạo dự án thất bại.");
@@ -591,7 +593,9 @@ export default function ProjectsPage() {
         onSelect={selectProject}
         onCreateClick={() => {
           setProjectForm({ name: "", description: "" });
-          openModal("createProject");
+          setSelectedProject(null);
+          setShowMyTasks(false);
+          setIsCreatingProject(true);
         }}
         currentUser={currentUser}
         onLogout={handleLogout}
@@ -613,11 +617,22 @@ export default function ProjectsPage() {
                 }
               }}
             />
+          ) : isCreatingProject ? (
+            <CreateProjectView
+              projectForm={projectForm}
+              setProjectForm={setProjectForm}
+              onSubmit={handleCreateProject}
+              onCancel={() => {
+                setIsCreatingProject(false);
+                setFormError("");
+              }}
+              formError={formError}
+            />
           ) : !selectedProject ? (
             <div className="flex flex-col items-center justify-center h-full opacity-60 select-none pb-20">
               <span className="material-symbols-outlined text-[80px] text-surface-container-highest mb-4" style={{ fontVariationSettings: "'FILL' 1" }}>folder_open</span>
               <p className="text-xl font-display font-semibold text-on-surface mb-2 tracking-tight">Chọn một dự án</p>
-              <button onClick={() => { setProjectForm({ name: "", description: "" }); openModal("createProject"); }} className="text-sm font-label-md text-primary hover:text-primary-fixed hover:bg-primary/10 px-4 py-2 rounded-lg transition-all">
+              <button onClick={() => { setProjectForm({ name: "", description: "" }); setIsCreatingProject(true); }} className="text-sm font-label-md text-primary hover:text-primary-fixed hover:bg-primary/10 px-4 py-2 rounded-lg transition-all">
                 hoặc tạo dự án mới
               </button>
             </div>
@@ -676,9 +691,6 @@ export default function ProjectsPage() {
       </div>
 
       {/* MODALS */}
-      {modal === "createProject" && (
-        <CreateProjectModal projectForm={projectForm} setProjectForm={setProjectForm} onSubmit={handleCreateProject} onClose={() => setModal(null)} formError={formError} />
-      )}
       {modal === "editProject" && (
         <EditProjectModal projectForm={projectForm} setProjectForm={setProjectForm} onSubmit={handleEditProject} onClose={() => setModal(null)} formError={formError} />
       )}

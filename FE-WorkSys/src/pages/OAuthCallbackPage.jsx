@@ -30,7 +30,7 @@ export default function OAuthCallbackPage() {
             id: Number(id),
             username,
             email: email || "",
-            avatarUrl: avatarUrl ? decodeURIComponent(avatarUrl) : null,
+            avatarUrl: (avatarUrl && avatarUrl !== "null" && avatarUrl !== "undefined") ? avatarUrl : null,
             systemRole: systemRole || "USER",
             status: status || "ACTIVE",
           }),

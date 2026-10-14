@@ -71,7 +71,18 @@ export default function AppNavbar() {
               >
                 <div className="w-7 h-7 bg-primary/20 rounded-full flex items-center justify-center text-xs font-bold text-primary overflow-hidden shrink-0">
                   {currentUser.avatarUrl ? (
-                    <img src={currentUser.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                    <img
+                      src={currentUser.avatarUrl}
+                      alt="Avatar"
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        if (e.currentTarget.nextSibling) {
+                          e.currentTarget.nextSibling.style.display = 'block';
+                        }
+                      }}
+                    />
                   ) : (
                     currentUser.username?.[0]?.toUpperCase()
                   )}

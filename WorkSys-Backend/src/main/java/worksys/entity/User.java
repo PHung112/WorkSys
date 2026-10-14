@@ -26,7 +26,7 @@ public class User {
     @Column(unique = true, nullable = true)
     private String googleId;
 
-    @Column(nullable = true)
+    @Column(nullable = true, columnDefinition = "TEXT")
     private String avatarUrl;
 
     @Enumerated(EnumType.STRING)

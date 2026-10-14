@@ -48,6 +48,8 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         // B3: Xử lý trong Database - Tìm hoặc tạo User
         User user = userService.findOrCreateGoogleUser(email, googleId, name, picture);
+        System.out.println(">>> [OAuth2] Google picture received: " + picture);
+        System.out.println(">>> [OAuth2] User saved avatarUrl: " + user.getAvatarUrl());
 
         // B5: Tạo JWT Token
         String token = jwtUtil.generateToken(user.getId(), user.getUsername());
