@@ -12,6 +12,7 @@ const projectApi = {
   removeMember: (projectId, userId) => http.delete(`/api/projects/${projectId}/members/${userId}`),
   updateMemberRole: (projectId, userId, data) => http.put(`/api/projects/${projectId}/members/${userId}`, data),
   getArchivedTasks: (projectId) => http.get(`/api/projects/${projectId}/archived-tasks`),
+  getProjectAnalytics: (projectId) => http.get(`/api/projects/${projectId}/analytics`),
 };
 
 export default projectApi

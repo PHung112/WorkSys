@@ -5,6 +5,7 @@ import taskApi from "../../api/taskApi";
 import { STATUS_CFG } from "../common/statusConfig";
 import AiChatModal from "./AiChatModal";
 import TaskDetailDrawer from "./TaskDetailDrawer";
+import ProjectAnalyticsView from "./ProjectAnalyticsView";
 
 const KANBAN_COLUMNS = ["TODO", "IN_PROGRESS", "SUBMITTED", "DONE"];
 
@@ -32,6 +33,7 @@ export default function ProjectDetail({
   onUnsubmitTask,
 }) {
   const navigate = useNavigate();
+  const [activeView, setActiveView] = useState("kanban"); // "kanban" | "analytics"
   const [kanbanTasks, setKanbanTasks] = useState(tasks);
   const [selectedDrawerTask, setSelectedDrawerTask] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -248,7 +250,11 @@ export default function ProjectDetail({
               <span className="material-symbols-outlined text-[20px]">more_vert</span>
             </button>
             <div className={`absolute right-0 mt-2 w-52 bg-surface-container-high rounded-xl shadow-xl border border-outline-variant/20 transition-all z-50 overflow-hidden flex flex-col ${isMenuOpen ? "opacity-100 pointer-events-auto translate-y-0" : "opacity-0 pointer-events-none -translate-y-1"}`}>
-              <button onClick={() => { navigate(`/projects/${selectedProject.id}/members`); setIsMenuOpen(false); }} className="text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-highest transition-colors flex items-center gap-2 cursor-pointer">
+              <button onClick={() => { setActiveView("analytics"); setIsMenuOpen(false); }} className="text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-highest transition-colors flex items-center gap-2 cursor-pointer">
+                <span className="material-symbols-outlined text-[16px] text-primary">analytics</span>
+                Báo cáo & Thống kê
+              </button>
+              <button onClick={() => { navigate(`/projects/${selectedProject.id}/members`); setIsMenuOpen(false); }} className="text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-highest transition-colors flex items-center gap-2 cursor-pointer border-t border-outline-variant/10">
                 <span className="material-symbols-outlined text-[16px] text-on-surface-variant">group</span>
                 Quản lý thành viên
               </button>
@@ -291,41 +297,86 @@ export default function ProjectDetail({
         </div>
       </div>
 
-      {/* Analytics Bar */}
-      <div className="px-container-margin mb-stack-lg shrink-0">
-        <div className="bg-surface-container-low rounded-2xl p-stack-md flex flex-col md:flex-row gap-stack-lg items-center justify-between border border-outline-variant/10 shadow-sm">
-          <div className="flex items-center gap-stack-lg w-full md:w-auto shrink-0">
-            <div className="flex flex-col">
-              <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider mb-1">Tổng nhiệm vụ</span>
-              <span className="font-display text-3xl font-bold text-on-background">{stats.total}</span>
-            </div>
-            <div className="w-px h-8 bg-surface-container-highest hidden md:block"></div>
-            <div className="flex flex-col">
-              <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider mb-1">Hoàn thành</span>
-              <span className="font-display text-3xl font-bold text-primary">{stats.completed}</span>
-            </div>
-            <div className="w-px h-8 bg-surface-container-highest hidden md:block"></div>
-            <div className="flex flex-col">
-              <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider mb-1">Quá hạn</span>
-              <span className="font-display text-3xl font-bold text-error">{stats.overdue}</span>
-            </div>
-          </div>
-          <div className="w-full md:max-w-md flex flex-col gap-2">
-            <div className="flex justify-between items-end">
-              <span className="font-label-md text-label-md text-on-surface">Tiến trình dự án</span>
-              <span className="font-label-md text-label-md text-primary font-bold">{stats.progress}%</span>
-            </div>
-            <div className="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
-              <div className="h-full bg-primary rounded-full transition-all duration-500 ease-out" style={{ width: `${stats.progress}%` }}></div>
-            </div>
-          </div>
+      {/* Switcher chế độ xem: Kanban vs Báo cáo thống kê */}
+      <div className="px-container-margin mb-3 shrink-0 flex items-center justify-between">
+        <div className="inline-flex items-center gap-1 bg-surface-container-low p-1 rounded-xl border border-outline-variant/15 shadow-inner">
+          <button
+            onClick={() => setActiveView("kanban")}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              activeView === "kanban"
+                ? "bg-primary text-on-primary shadow-sm"
+                : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[16px]">view_kanban</span>
+            <span>Bảng Kanban</span>
+          </button>
+          <button
+            onClick={() => setActiveView("analytics")}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              activeView === "analytics"
+                ? "bg-primary text-on-primary shadow-sm"
+                : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[16px]">analytics</span>
+            <span>Báo cáo & Thống kê</span>
+          </button>
         </div>
       </div>
 
-      {/* Kanban Board */}
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="flex-1 px-4 overflow-x-auto flex justify-center gap-4 snap-x snap-mandatory custom-scrollbar min-h-0">
-          {KANBAN_COLUMNS.map((status) => {
+      {activeView === "analytics" ? (
+        <ProjectAnalyticsView
+          projectId={selectedProject?.id}
+          selectedProject={selectedProject}
+          onBackToKanban={() => setActiveView("kanban")}
+        />
+      ) : (
+        <>
+          {/* Analytics Bar — Click để mở trang báo cáo chi tiết */}
+          <div
+            onClick={() => setActiveView("analytics")}
+            className="px-container-margin mb-stack-lg shrink-0 cursor-pointer group"
+            title="Nhấp để xem báo cáo phân tích chi tiết dự án"
+          >
+            <div className="bg-surface-container-low group-hover:bg-surface-container rounded-2xl p-stack-md flex flex-col md:flex-row gap-stack-lg items-center justify-between border border-outline-variant/10 group-hover:border-primary/40 transition shadow-sm">
+              <div className="flex items-center gap-stack-lg w-full md:w-auto shrink-0">
+                <div className="flex flex-col">
+                  <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider mb-1">Tổng nhiệm vụ</span>
+                  <span className="font-display text-3xl font-bold text-on-background">{stats.total}</span>
+                </div>
+                <div className="w-px h-8 bg-surface-container-highest hidden md:block"></div>
+                <div className="flex flex-col">
+                  <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider mb-1">Hoàn thành</span>
+                  <span className="font-display text-3xl font-bold text-primary">{stats.completed}</span>
+                </div>
+                <div className="w-px h-8 bg-surface-container-highest hidden md:block"></div>
+                <div className="flex flex-col">
+                  <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider mb-1">Quá hạn</span>
+                  <span className="font-display text-3xl font-bold text-error">{stats.overdue}</span>
+                </div>
+              </div>
+              <div className="w-full md:max-w-md flex flex-col gap-2">
+                <div className="flex justify-between items-end">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-label-md text-label-md text-on-surface">Tiến trình dự án</span>
+                    <span className="material-symbols-outlined text-[16px] text-on-surface-variant group-hover:text-primary transition-colors">
+                      trending_up
+                    </span>
+                  </div>
+                  <span className="font-label-md text-label-md text-primary font-bold">{stats.progress}%</span>
+                </div>
+                <div className="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+                  <div className="h-full bg-primary rounded-full transition-all duration-500 ease-out" style={{ width: `${stats.progress}%` }}></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Kanban Board */}
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <div className="flex-1 px-4 overflow-x-auto flex justify-center gap-4 snap-x snap-mandatory custom-scrollbar min-h-0">
+              {KANBAN_COLUMNS.map((status) => {
             const columnTasks = tasksByStatus[status];
             const cfg = STATUS_CFG[status];
             return (
@@ -454,9 +505,11 @@ export default function ProjectDetail({
           })}
         </div>
       </DragDropContext>
+      </>
+      )}
 
-      {/* AI Assistant Floating Button — chỉ Admin/Manager mới thấy */}
-      {(myRole === "ADMIN" || myRole === "MANAGER") && (
+      {/* AI Assistant Floating Button — chỉ Admin/Manager mới thấy (ẩn khi chat đang mở) */}
+      {(myRole === "ADMIN" || myRole === "MANAGER") && !isAiChatOpen && (
         <div className="fixed bottom-stack-lg right-stack-lg z-30">
           <div className="relative">
             <div className="absolute -inset-2 bg-primary/20 rounded-full blur-xl opacity-0 hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>

@@ -1,15 +1,36 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import projectApi from "../api/projectApi";
+import {
+  getCachedProjects,
+  setCachedProjects,
+  getCachedProjectDetails,
+  setCachedProjectDetails,
+  getCachedSelectedProject,
+} from "../utils/projectsCache";
 
 // Trang toàn màn hình độc lập (/projects/:projectId/archive) hiển thị các task đã lưu trữ
 export default function ProjectArchivePage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
 
-  const [project, setProject] = useState(null);
-  const [archivedTasks, setArchivedTasks] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [project, setProject] = useState(() => {
+    if (!projectId) return null;
+    const found = getCachedProjects().find((p) => String(p.id) === String(projectId));
+    if (found) return found;
+    const selected = getCachedSelectedProject();
+    if (selected && String(selected.id) === String(projectId)) return selected;
+    return null;
+  });
+  const [archivedTasks, setArchivedTasks] = useState(() => {
+    if (!projectId) return [];
+    return getCachedProjectDetails(projectId)?.archivedTasks || [];
+  });
+  const [isLoading, setIsLoading] = useState(() => {
+    if (!projectId) return true;
+    const cached = getCachedProjectDetails(projectId);
+    return !(cached?.archivedTasks?.length > 0);
+  });
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -19,7 +40,7 @@ export default function ProjectArchivePage() {
   // Load project details and archived tasks
   const loadData = useCallback(async () => {
     if (!projectId) return;
-    setIsLoading(true);
+    if (archivedTasks.length === 0) setIsLoading(true);
     try {
       const [pRes, aRes] = await Promise.all([
         projectApi.getMyProjects(),
@@ -28,12 +49,16 @@ export default function ProjectArchivePage() {
       const currentProj = pRes.data.find((p) => String(p.id) === String(projectId));
       setProject(currentProj || null);
       setArchivedTasks(aRes.data || []);
+      setCachedProjects(pRes.data);
+      setCachedProjectDetails(projectId, {
+        archivedTasks: aRes.data || [],
+      });
     } catch {
       // ignore
     } finally {
       setIsLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, archivedTasks.length]);
 
   useEffect(() => {
     loadData();

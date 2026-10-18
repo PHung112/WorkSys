@@ -1,5 +1,6 @@
 package worksys.service;
 
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import worksys.dto.ProjectMemberDTO;
 import worksys.entity.Project;
@@ -23,14 +24,17 @@ public class ProjectService {
     private final UserRepository userRepository;
     private final TaskRepository taskRepository;
     private final RealtimeEventService realtimeEventService;
+    private final CacheEvictionService cacheEvictionService;
 
     public ProjectService(ProjectRepository projectRepository, ProjectMemberRepository projectMemberRepository,
-            UserRepository userRepository, TaskRepository taskRepository, RealtimeEventService realtimeEventService) {
+            UserRepository userRepository, TaskRepository taskRepository,
+            RealtimeEventService realtimeEventService, CacheEvictionService cacheEvictionService) {
         this.projectRepository = projectRepository;
         this.projectMemberRepository = projectMemberRepository;
         this.userRepository = userRepository;
         this.taskRepository = taskRepository;
         this.realtimeEventService = realtimeEventService;
+        this.cacheEvictionService = cacheEvictionService;
     }
 
     // Tạo project mới
@@ -50,6 +54,7 @@ public class ProjectService {
         pm.setRole(Role.ADMIN);
 
         projectMemberRepository.save(pm);
+        cacheEvictionService.evictUserProjects(creatorId);
         realtimeEventService.publishProjectChanged(saved, "PROJECT_CREATED", creatorId);
 
         return saved;
@@ -60,7 +65,8 @@ public class ProjectService {
         return projectRepository.findAll();
     }
 
-    // Lấy projects mà user đang là thành viên
+    // Lấy projects mà user đang là thành viên (Cache-Aside: TTL 10 phút)
+    @Cacheable(value = "user_projects", key = "#userId")
     public List<Project> getProjectsByUserId(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
         return projectMemberRepository.findByUser(user)
@@ -78,7 +84,8 @@ public class ProjectService {
         return projectMemberRepository.findByProjectAndUser(project, user).isPresent();
     }
 
-    // Lấy project theo ID
+    // Lấy project theo ID (Cache-Aside: TTL 15 phút)
+    @Cacheable(value = "project_details", key = "#id")
     public Project getProjectById(Long id) {
         return projectRepository.findById(id).orElseThrow(() -> new RuntimeException("Project not found"));
     }
@@ -95,6 +102,7 @@ public class ProjectService {
         }
 
         Project updated = projectRepository.save(project);
+        cacheEvictionService.evictProjectDetails(id);
         realtimeEventService.publishProjectChanged(updated, "PROJECT_UPDATED", null);
         return updated;
     }
@@ -116,6 +124,9 @@ public class ProjectService {
         taskRepository.deleteAll(taskRepository.findByProject(project));
         projectMemberRepository.deleteAll(projectMemberRepository.findByProject(project));
         projectRepository.delete(project);
+
+        cacheEvictionService.evictUserProjects(memberIds);
+        cacheEvictionService.evictProjectAll(projectId);
 
         for (Long memberId : memberIds) {
             realtimeEventService.publishProjectListChanged(memberId, projectId, "PROJECT_DELETED");
@@ -164,7 +175,10 @@ public class ProjectService {
         pm.setUser(user);
         pm.setRole(role);
 
-        return projectMemberRepository.save(pm);
+        ProjectMember savedMember = projectMemberRepository.save(pm);
+        cacheEvictionService.evictUserProjects(userId);
+        cacheEvictionService.evictProjectAnalytics(projectId);
+        return savedMember;
     }
 
     // Xóa member khỏi project
@@ -184,6 +198,9 @@ public class ProjectService {
         ProjectMember pm = projectMemberRepository.findByProjectAndUser(project, targetUser)
                 .orElseThrow(() -> new RuntimeException("Member not found in this project"));
         projectMemberRepository.delete(pm);
+
+        cacheEvictionService.evictUserProjects(targetUserId);
+        cacheEvictionService.evictProjectAnalytics(projectId);
 
         realtimeEventService.publishProjectListChanged(targetUserId, projectId,
                 actorId.equals(targetUserId) ? "MEMBER_LEFT" : "MEMBER_KICKED");
@@ -236,6 +253,7 @@ public class ProjectService {
 
         targetPm.setRole(newRole);
         ProjectMember updated = projectMemberRepository.save(targetPm);
+        cacheEvictionService.evictProjectAnalytics(projectId);
         realtimeEventService.publishProjectChanged(project, "MEMBER_ROLE_UPDATED", actorId);
         realtimeEventService.publishProjectListChanged(targetUserId, projectId, "MEMBER_ROLE_UPDATED");
         return updated;

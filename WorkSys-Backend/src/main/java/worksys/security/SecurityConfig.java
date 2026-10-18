@@ -17,12 +17,14 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
+    private final RateLimitingFilter rateLimitingFilter;
     private final OAuth2SuccessHandler oauth2SuccessHandler;
     private final OAuth2FailureHandler oauth2FailureHandler;
 
-    public SecurityConfig(JwtFilter jwtFilter, OAuth2SuccessHandler oauth2SuccessHandler,
-            OAuth2FailureHandler oauth2FailureHandler) {
+    public SecurityConfig(JwtFilter jwtFilter, RateLimitingFilter rateLimitingFilter,
+            OAuth2SuccessHandler oauth2SuccessHandler, OAuth2FailureHandler oauth2FailureHandler) {
         this.jwtFilter = jwtFilter;
+        this.rateLimitingFilter = rateLimitingFilter;
         this.oauth2SuccessHandler = oauth2SuccessHandler;
         this.oauth2FailureHandler = oauth2FailureHandler;
     }
@@ -39,6 +41,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/system/optimization/**").permitAll()
                         .requestMatchers("/oauth2/authorization/**", "/login/oauth2/code/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/api/files/**").authenticated()
@@ -47,6 +50,7 @@ public class SecurityConfig {
                         .successHandler(oauth2SuccessHandler)
                         .failureHandler(oauth2FailureHandler))
                 .formLogin(form -> form.disable())
+                .addFilterBefore(rateLimitingFilter, JwtFilter.class)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

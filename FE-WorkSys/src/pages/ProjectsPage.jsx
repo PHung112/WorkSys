@@ -20,6 +20,17 @@ import TransferAdminModal from "../components/projects/modals/TransferAdminModal
 import ConfirmModal from "../components/common/ConfirmModal";
 import { subscribeRealtime } from "../realtime/wsClient";
 import { uploadFileToCloudinary } from "../config/cloudinaryConfig";
+import {
+  getCachedProjects,
+  setCachedProjects,
+  getCachedSelectedProjectId,
+  setCachedSelectedProjectId,
+  getCachedSelectedProject,
+  setCachedSelectedProject,
+  getCachedProjectDetails,
+  setCachedProjectDetails,
+  clearProjectsCache,
+} from "../utils/projectsCache";
 
 // Hàm tiện ích lấy chuỗi ngày hiện tại (YYYY-MM-DD) theo giờ địa phương của máy người dùng
 const getTodayString = () => {
@@ -36,12 +47,42 @@ export default function ProjectsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentUser, setCurrentUser] = useState(null);
 
-  // Data
-  const [projects, setProjects] = useState([]);
-  const [selectedProject, setSelectedProject] = useState(null);
-  const [members, setMembers] = useState([]);
-  const [tasks, setTasks] = useState([]);
-  const [archivedTasks, setArchivedTasks] = useState([]);
+  // Data - Khởi tạo từ cache ngay lập tức để render tức thì (không nháy màn hình trống)
+  const [projects, setProjects] = useState(() => getCachedProjects());
+
+  const [selectedProject, setSelectedProject] = useState(() => {
+    const gotoId = searchParams.get("goto");
+    const cachedProjects = getCachedProjects();
+    const targetId = gotoId || getCachedSelectedProjectId();
+    if (targetId && cachedProjects.length > 0) {
+      const found = cachedProjects.find((p) => String(p.id) === String(targetId));
+      if (found) return found;
+    }
+    return getCachedSelectedProject();
+  });
+
+  const [members, setMembers] = useState(() => {
+    const targetId = searchParams.get("goto") || getCachedSelectedProjectId();
+    const cached = getCachedProjectDetails(targetId);
+    return cached?.members || [];
+  });
+
+  const [tasks, setTasks] = useState(() => {
+    const targetId = searchParams.get("goto") || getCachedSelectedProjectId();
+    const cached = getCachedProjectDetails(targetId);
+    return cached?.tasks || [];
+  });
+
+  const [archivedTasks, setArchivedTasks] = useState(() => {
+    const targetId = searchParams.get("goto") || getCachedSelectedProjectId();
+    const cached = getCachedProjectDetails(targetId);
+    return cached?.archivedTasks || [];
+  });
+
+  const [isInitialLoadingProjects, setIsInitialLoadingProjects] = useState(
+    () => getCachedProjects().length === 0
+  );
+
   // Khôi phục tab đang mở từ cache (nếu có)
   const [activeTab, setActiveTab] = useState(
     () => sessionStorage.getItem("projectsPage_activeTab") || "members"
@@ -124,37 +165,55 @@ export default function ProjectsPage() {
   }, [searchQuery, modal, members]);
 
   // Tải toàn bộ project mà user hiện tại đang tham gia.
-  // Sau khi tải xong, tự động khôi phục project đã chọn trước đó từ sessionStorage.
+  // Đồng thời cập nhật cache và đồng bộ project đang chọn nếu có.
   const loadProjects = useCallback(async () => {
     try {
       const res = await projectApi.getMyProjects();
-      setProjects(res.data);
+      const data = res.data || [];
+      setProjects(data);
+      setCachedProjects(data);
 
-      // Khôi phục project được chọn từ cache nếu chưa có project nào được chọn
-      const cachedId = sessionStorage.getItem("projectsPage_selectedProjectId");
-      if (cachedId) {
-        const cached = res.data.find((p) => String(p.id) === cachedId);
-        if (cached) {
-          // Dùng setSelectedProject trực tiếp để tránh gọi lại selectProject (đã có cache)
-          setSelectedProject(cached);
+      // Khôi phục hoặc đồng bộ project đang chọn
+      setSelectedProject((prevSelected) => {
+        const currentId = prevSelected?.id || getCachedSelectedProjectId();
+        if (currentId) {
+          const found = data.find((p) => String(p.id) === String(currentId));
+          if (found) {
+            setCachedSelectedProject(found);
+            return found;
+          }
         }
-      }
+        return prevSelected;
+      });
 
-      return res.data;
+      return data;
     } catch {
       return [];
+    } finally {
+      setIsInitialLoadingProjects(false);
     }
   }, []);
 
   // Chọn project: lưu cache ID vào sessionStorage để khôi phục khi quay lại trang
-  const selectProject = useCallback(async (project, tab = "members") => {
+  const selectProject = useCallback(async (project, tab = "members", forceLoading = false) => {
+    if (!project) return;
     setShowMyTasks(false);
     setIsCreatingProject(false);
     setSelectedProject(project); // Đổi tên project trên header ngay lập tức
+    setCachedSelectedProject(project);
     setActiveTab(tab);
-    // Lưu ID project đang chọn vào cache
-    sessionStorage.setItem("projectsPage_selectedProjectId", String(project.id));
-    setIsLoadingDetails(true); // Bật vòng xoay loading che cái màn hình cũ đi
+
+    const cached = getCachedProjectDetails(project.id);
+    const hasCachedDetails = cached && (cached.members?.length > 0 || cached.tasks?.length > 0);
+
+    if (hasCachedDetails) {
+      setMembers(cached.members || []);
+      setTasks(cached.tasks || []);
+      setArchivedTasks(cached.archivedTasks || []);
+      setIsLoadingDetails(false);
+    } else if (forceLoading) {
+      setIsLoadingDetails(true); // Chỉ bật loading nếu chưa có dữ liệu trong cache
+    }
 
     try {
       const [mRes, tRes, aRes] = await Promise.all([
@@ -162,9 +221,14 @@ export default function ProjectsPage() {
         taskApi.getTasksByProject(project.id),
         projectApi.getArchivedTasks(project.id),
       ]);
-      setMembers(mRes.data);
-      setTasks(tRes.data);
-      setArchivedTasks(aRes.data);
+      setMembers(mRes.data || []);
+      setTasks(tRes.data || []);
+      setArchivedTasks(aRes.data || []);
+      setCachedProjectDetails(project.id, {
+        members: mRes.data || [],
+        tasks: tRes.data || [],
+        archivedTasks: aRes.data || [],
+      });
     } catch {
       // ignore initial detail load failure
     } finally {
@@ -172,7 +236,7 @@ export default function ProjectsPage() {
     }
   }, []);
 
-  // Refresh phần chi tiết project hiện tại (Dùng cho realtime, KHÔNG bật loading full màn hình để tránh giật UI)
+  // Refresh phần chi tiết project hiện tại (Dùng cho realtime & background update, KHÔNG bật loading full màn hình để tránh giật UI)
   const refreshDetails = useCallback(async (projectId) => {
     if (!projectId) return;
     try {
@@ -181,9 +245,14 @@ export default function ProjectsPage() {
         taskApi.getTasksByProject(projectId),
         projectApi.getArchivedTasks(projectId),
       ]);
-      setMembers(mRes.data);
-      setTasks(tRes.data);
-      setArchivedTasks(aRes.data);
+      setMembers(mRes.data || []);
+      setTasks(tRes.data || []);
+      setArchivedTasks(aRes.data || []);
+      setCachedProjectDetails(projectId, {
+        members: mRes.data || [],
+        tasks: tRes.data || [],
+        archivedTasks: aRes.data || [],
+      });
     } catch {
       // ignore details refresh failure
     }
@@ -203,38 +272,33 @@ export default function ProjectsPage() {
     sessionStorage.setItem("projectsPage_activeTab", activeTab);
   }, [activeTab]);
 
-  // Khi project được khôi phục từ cache (selectedProject có nhưng members/tasks chưa được load),
-  // tự động fetch chi tiết members và tasks của project đó.
+  // Khi project được khôi phục từ cache nhưng chưa có chi tiết members/tasks, tự động fetch ngầm
   useEffect(() => {
     if (!selectedProject?.id) return;
-    // Chỉ load nếu chưa có members (tức là vừa restore từ cache, chưa fetch API)
-    if (members.length > 0) return;
+    if (members.length === 0 && tasks.length === 0) {
+      setIsLoadingDetails(true);
+      refreshDetails(selectedProject.id).finally(() => setIsLoadingDetails(false));
+    }
+  }, [selectedProject?.id, members.length, tasks.length, refreshDetails]);
 
-    setIsLoadingDetails(true);
-    Promise.all([
-      projectApi.getProjectMembers(selectedProject.id),
-      taskApi.getTasksByProject(selectedProject.id),
-    ])
-      .then(([mRes, tRes]) => {
-        setMembers(mRes.data);
-        setTasks(tRes.data);
-      })
-      .catch(() => { })
-      .finally(() => setIsLoadingDetails(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProject?.id]); // Chỉ chạy khi selectedProject.id thay đổi
-
-  // Auto-select project from ?goto=id URL param (from notification click)
+  // Auto-select project from ?goto=id URL param (from notification click hoặc sau khi tạo task)
   useEffect(() => {
     const gotoId = searchParams.get("goto");
-    if (!gotoId || projects.length === 0) return;
-    const target = projects.find((p) => String(p.id) === gotoId);
+    if (!gotoId) return;
+
+    const allProjects = projects.length > 0 ? projects : getCachedProjects();
+    const target = allProjects.find((p) => String(p.id) === String(gotoId));
+
     if (target) {
-      selectProject(target);
-      setActiveTab("tasks");
+      if (selectedProject?.id === target.id && (tasks.length > 0 || members.length > 0)) {
+        // Đã hiển thị đúng project rồi, chỉ refresh ngầm trong nền không gây gián đoạn UI
+        refreshDetails(target.id);
+      } else {
+        selectProject(target, "tasks", false);
+      }
       setSearchParams({}, { replace: true }); // clean up URL
     }
-  }, [searchParams, projects, selectProject, setSearchParams]);
+  }, [searchParams, projects, selectedProject?.id, tasks.length, members.length, selectProject, refreshDetails, setSearchParams]);
 
   // Listen for invite accepted (from NotificationBell) → reload projects
   useEffect(() => {
@@ -571,6 +635,7 @@ export default function ProjectsPage() {
 
 
   const handleLogout = () => {
+    clearProjectsCache();
     sessionStorage.clear();
     navigate("/auth");
   };
@@ -590,7 +655,7 @@ export default function ProjectsPage() {
           setShowMyTasks(true);
           setSelectedProject(null);
         }}
-        onSelect={selectProject}
+        onSelect={(p) => selectProject(p, activeTab, true)}
         onCreateClick={() => {
           setProjectForm({ name: "", description: "" });
           setSelectedProject(null);
@@ -601,6 +666,7 @@ export default function ProjectsPage() {
         onLogout={handleLogout}
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen((prev) => !prev)}
+        isLoading={isInitialLoadingProjects}
       />
 
       {/* Main area: shift right khi sidebar mở, full-width khi đóng */}
@@ -628,6 +694,11 @@ export default function ProjectsPage() {
               }}
               formError={formError}
             />
+          ) : isInitialLoadingProjects && !selectedProject ? (
+            <div className="flex flex-col items-center justify-center h-full pb-20">
+              <div className="animate-spin w-10 h-10 border-3 border-primary border-t-transparent rounded-full mb-4"></div>
+              <p className="text-sm font-medium text-on-surface-variant">Đang tải dữ liệu dự án...</p>
+            </div>
           ) : !selectedProject ? (
             <div className="flex flex-col items-center justify-center h-full opacity-60 select-none pb-20">
               <span className="material-symbols-outlined text-[80px] text-surface-container-highest mb-4" style={{ fontVariationSettings: "'FILL' 1" }}>folder_open</span>

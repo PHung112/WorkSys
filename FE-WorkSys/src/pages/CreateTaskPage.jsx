@@ -5,6 +5,14 @@ import taskApi from "../api/taskApi";
 import TimePicker from "../components/common/TimePicker";
 import { inputCls, labelCls, btnPrimary, btnSecondary } from "../components/common/formStyles";
 import { uploadFileToCloudinary } from "../config/cloudinaryConfig";
+import {
+  getCachedProjects,
+  setCachedProjects,
+  getCachedSelectedProjectId,
+  getCachedSelectedProject,
+  getCachedProjectDetails,
+  setCachedProjectDetails,
+} from "../utils/projectsCache";
 
 // Hàm tiện ích lấy chuỗi ngày hôm nay định dạng YYYY-MM-DD theo giờ địa phương
 const getTodayString = () => {
@@ -24,10 +32,28 @@ export default function CreateTaskPage() {
   // Xác định projectId từ param hoặc query string
   const urlProjectId = params.projectId || searchParams.get("projectId");
 
-  const [projects, setProjects] = useState([]);
-  const [selectedProjectId, setSelectedProjectId] = useState(urlProjectId || "");
-  const [currentProject, setCurrentProject] = useState(null);
-  const [members, setMembers] = useState([]);
+  const [projects, setProjects] = useState(() => getCachedProjects());
+  const [selectedProjectId, setSelectedProjectId] = useState(
+    urlProjectId || getCachedSelectedProjectId() || ""
+  );
+  const [currentProject, setCurrentProject] = useState(() => {
+    const targetId = urlProjectId || getCachedSelectedProjectId();
+    if (targetId) {
+      const found = getCachedProjects().find((p) => String(p.id) === String(targetId));
+      if (found) return found;
+      const selected = getCachedSelectedProject();
+      if (selected && String(selected.id) === String(targetId)) return selected;
+    }
+    return null;
+  });
+  const [members, setMembers] = useState(() => {
+    const targetId = urlProjectId || getCachedSelectedProjectId();
+    if (targetId) {
+      const cached = getCachedProjectDetails(targetId);
+      if (cached?.members?.length > 0) return cached.members;
+    }
+    return [];
+  });
   const [loadingMembers, setLoadingMembers] = useState(false);
 
   // Form state
@@ -90,6 +116,7 @@ export default function CreateTaskPage() {
       try {
         const res = await projectApi.getMyProjects();
         setProjects(res.data);
+        setCachedProjects(res.data);
         if (!selectedProjectId && res.data.length > 0) {
           setSelectedProjectId(String(res.data[0].id));
         }
@@ -105,7 +132,7 @@ export default function CreateTaskPage() {
     if (!selectedProjectId) return;
 
     const fetchProjectAndMembers = async () => {
-      setLoadingMembers(true);
+      if (members.length === 0) setLoadingMembers(true);
       try {
         const [projectRes, membersRes] = await Promise.all([
           projectApi.getProjectById(selectedProjectId).catch(() => null),
@@ -114,7 +141,9 @@ export default function CreateTaskPage() {
         if (projectRes?.data) {
           setCurrentProject(projectRes.data);
         }
-        setMembers(membersRes.data || []);
+        const memberList = membersRes.data || [];
+        setMembers(memberList);
+        setCachedProjectDetails(selectedProjectId, { members: memberList });
       } catch (err) {
         console.error("Lỗi khi tải thành viên dự án:", err);
         setMembers([]);

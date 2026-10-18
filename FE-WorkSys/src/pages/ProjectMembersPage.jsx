@@ -7,6 +7,13 @@ import EditRoleModal from "../components/projects/modals/EditRoleModal";
 import InviteMemberModal from "../components/projects/modals/InviteMemberModal";
 import MemberProfileModal from "../components/projects/modals/MemberProfileModal";
 import ConfirmModal from "../components/common/ConfirmModal";
+import {
+  getCachedProjects,
+  setCachedProjects,
+  getCachedProjectDetails,
+  setCachedProjectDetails,
+  getCachedSelectedProject,
+} from "../utils/projectsCache";
 
 // Trang toàn màn hình độc lập (/projects/:projectId/members) quản lý danh sách thành viên dự án
 export default function ProjectMembersPage() {
@@ -14,10 +21,27 @@ export default function ProjectMembersPage() {
   const navigate = useNavigate();
 
   const [currentUser, setCurrentUser] = useState(null);
-  const [project, setProject] = useState(null);
-  const [members, setMembers] = useState([]);
-  const [tasks, setTasks] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [project, setProject] = useState(() => {
+    if (!projectId) return null;
+    const found = getCachedProjects().find((p) => String(p.id) === String(projectId));
+    if (found) return found;
+    const selected = getCachedSelectedProject();
+    if (selected && String(selected.id) === String(projectId)) return selected;
+    return null;
+  });
+  const [members, setMembers] = useState(() => {
+    if (!projectId) return [];
+    return getCachedProjectDetails(projectId)?.members || [];
+  });
+  const [tasks, setTasks] = useState(() => {
+    if (!projectId) return [];
+    return getCachedProjectDetails(projectId)?.tasks || [];
+  });
+  const [isLoading, setIsLoading] = useState(() => {
+    if (!projectId) return true;
+    const cached = getCachedProjectDetails(projectId);
+    return !(cached?.members?.length > 0);
+  });
 
   // Filter & Search
   const [searchQuery, setSearchQuery] = useState("");
@@ -52,7 +76,7 @@ export default function ProjectMembersPage() {
   // Load project details, members, tasks
   const loadData = useCallback(async () => {
     if (!projectId) return;
-    setIsLoading(true);
+    if (members.length === 0) setIsLoading(true);
     try {
       const [pRes, mRes, tRes] = await Promise.all([
         projectApi.getMyProjects(),
@@ -63,12 +87,17 @@ export default function ProjectMembersPage() {
       setProject(currentProj || null);
       setMembers(mRes.data);
       setTasks(tRes.data);
+      setCachedProjects(pRes.data);
+      setCachedProjectDetails(projectId, {
+        members: mRes.data,
+        tasks: tRes.data,
+      });
     } catch {
       // ignore
     } finally {
       setIsLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, members.length]);
 
   useEffect(() => {
     loadData();
@@ -198,7 +227,7 @@ export default function ProjectMembersPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-outline-variant/15">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate("/projects")}
+              onClick={() => navigate(projectId ? `/projects?goto=${projectId}` : "/projects")}
               className="h-10 px-3.5 bg-surface-container hover:bg-surface-container-high text-on-surface rounded-xl flex items-center gap-2 text-xs font-semibold border border-outline-variant/20 transition-all cursor-pointer shadow-sm hover:scale-[1.02]"
               title="Quay lại danh sách dự án"
             >

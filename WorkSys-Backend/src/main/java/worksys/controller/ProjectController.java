@@ -61,6 +61,16 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.getProjectById(id));
     }
 
+    // Lấy số liệu phân tích và báo cáo hiệu suất của project
+    @GetMapping("/{id}/analytics")
+    public ResponseEntity<?> getProjectAnalytics(@PathVariable Long id, HttpServletRequest request) {
+        Long userId = getCurrentUserId(request);
+        if (!projectService.isMember(id, userId)) {
+            return ResponseEntity.status(403).body("Bạn không có quyền truy cập project này");
+        }
+        return ResponseEntity.ok(taskService.getProjectAnalytics(id));
+    }
+
     // Cập nhật project — chỉ thành viên của project
     @PutMapping("/{id}")
     public ResponseEntity<?> updateProject(@PathVariable Long id, @RequestBody UpdateProjectRequest request,
