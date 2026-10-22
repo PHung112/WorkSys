@@ -28,6 +28,14 @@ public class Project {
     @Column(nullable = false)
     private boolean archived = false;
 
+    // Tên repository GitHub liên kết (ví dụ: owner/repo hoặc url)
+    @Column(name = "github_repo")
+    private String githubRepo;
+
+    // Secret dùng để xác thực chữ ký HMAC-SHA256 của GitHub Webhook
+    @Column(name = "github_secret")
+    private String githubSecret;
+
     public Project() {
     }
 
@@ -78,5 +86,21 @@ public class Project {
 
     public void setArchived(boolean archived) {
         this.archived = archived;
+    }
+
+    public String getGithubRepo() {
+        return githubRepo;
+    }
+
+    public void setGithubRepo(String githubRepo) {
+        this.githubRepo = githubRepo;
+    }
+
+    public String getGithubSecret() {
+        return githubSecret;
+    }
+
+    public void setGithubSecret(String githubSecret) {
+        this.githubSecret = githubSecret;
     }
 }

@@ -3,9 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
 import taskApi from "../../api/taskApi";
 import { STATUS_CFG } from "../common/statusConfig";
-import AiChatModal from "./AiChatModal";
 import TaskDetailDrawer from "./TaskDetailDrawer";
 import ProjectAnalyticsView from "./ProjectAnalyticsView";
+import ProjectMembersView from "./ProjectMembersView";
+import ProjectArchiveView from "./ProjectArchiveView";
+import GitHubIntegrationView from "./GitHubIntegrationView";
+import AiChatView from "./AiChatView";
+import AiTaskDecompositionView from "./AiTaskDecompositionView";
+import MemberProfileModal from "./modals/MemberProfileModal";
 
 const KANBAN_COLUMNS = ["TODO", "IN_PROGRESS", "SUBMITTED", "DONE"];
 
@@ -33,13 +38,15 @@ export default function ProjectDetail({
   onUnsubmitTask,
 }) {
   const navigate = useNavigate();
-  const [activeView, setActiveView] = useState("kanban"); // "kanban" | "analytics"
+  // Quản lý chế độ xem dạng trang nội bộ (sub-view) không reload, không mở trang mới:
+  // "kanban" | "members" | "analytics" | "archive" | "github" | "ai-chat" | "ai-decompose"
+  const [activeView, setActiveView] = useState("kanban");
   const [kanbanTasks, setKanbanTasks] = useState(tasks);
   const [selectedDrawerTask, setSelectedDrawerTask] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [assigneesModalTask, setAssigneesModalTask] = useState(null); // Task đang xem popup danh sách người thực hiện
-  const [isAiChatOpen, setIsAiChatOpen] = useState(false); // trạng thái mở/đóng modal chat AI
+  const [assigneesModalTask, setAssigneesModalTask] = useState(null);
+  const [profileMember, setProfileMember] = useState(null); // Popup xem hồ sơ thành viên
   const menuRef = useRef(null);
 
   // Sắp xếp danh sách assignees của task: đưa user hiện tại lên đầu tiên
@@ -64,6 +71,13 @@ export default function ProjectDetail({
   useEffect(() => {
     setKanbanTasks(tasks);
   }, [tasks]);
+
+  // Callback khi AI tạo hàng loạt task thành công: tự động cập nhật ngay vào bảng Kanban
+  const handleAiTasksCreated = (newTasks) => {
+    if (Array.isArray(newTasks) && newTasks.length > 0) {
+      setKanbanTasks((prev) => [...prev, ...newTasks]);
+    }
+  };
 
   // Close menu on outside click
   useEffect(() => {
@@ -195,9 +209,23 @@ export default function ProjectDetail({
             <span className="material-symbols-outlined text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>rocket_launch</span>
           </div>
           <div className="flex flex-col">
-            <div className="flex items-center gap-stack-sm mb-1">
+            <div className="flex items-center flex-wrap gap-2 mb-1">
               <h1 className="font-display text-3xl font-bold text-on-background m-0 tracking-tight">{selectedProject?.name}</h1>
-              <span className="px-2 py-1 bg-surface-container-high rounded-full font-label-xs text-label-xs text-on-surface-variant ml-2 tracking-widest uppercase border border-outline-variant/10">Đang hoạt động</span>
+              <span className="px-2 py-1 bg-surface-container-high rounded-full font-label-xs text-label-xs text-on-surface-variant tracking-widest uppercase border border-outline-variant/10">Đang hoạt động</span>
+              {selectedProject?.githubRepo && (
+                <a
+                  href={`https://github.com/${selectedProject.githubRepo.replace(/^https?:\/\/github\.com\//, "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-surface-container hover:bg-surface-container-high rounded-full text-xs font-mono text-primary border border-primary/20 hover:border-primary/50 transition-colors"
+                  title="Mở repository trên GitHub"
+                >
+                  <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                  </svg>
+                  <span>{selectedProject.githubRepo}</span>
+                </a>
+              )}
             </div>
             <p className="font-body-lg text-body-lg text-on-surface-variant m-0 max-w-xl">
               {selectedProject?.description || "Không có mô tả cho dự án này."}
@@ -206,11 +234,11 @@ export default function ProjectDetail({
         </div>
 
         <div className="flex items-center gap-stack-sm shrink-0">
-          {/* Nhóm avatar thành viên — click để chuyển sang trang thành viên riêng biệt */}
+          {/* Nhóm avatar thành viên — click để chuyển sang tab Thành viên nội bộ */}
           <div
             className="flex -space-x-2 mr-4 cursor-pointer hover:opacity-80 transition-opacity"
-            onClick={() => navigate(`/projects/${selectedProject.id}/members`)}
-            title="Xem danh sách thành viên dự án"
+            onClick={() => setActiveView("members")}
+            title="Xem và quản lý thành viên dự án"
           >
             {members.slice(0, 3).map((m, i) => {
               const isSelf = (m.userId || m.id) === currentUser?.id;
@@ -236,6 +264,19 @@ export default function ProjectDetail({
           </div>
 
           {(myRole === "ADMIN" || myRole === "MANAGER") && (
+            <button
+              onClick={() => setActiveView("ai-decompose")}
+              className="h-10 px-3.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-600 hover:from-purple-500 hover:to-indigo-500 text-white font-label-md text-label-md rounded-lg flex items-center gap-1.5 transition-all shadow-md shadow-purple-600/30 hover:shadow-purple-600/50 cursor-pointer"
+              title="AI tự động phân rã tính năng lớn thành các sub-tasks chi tiết"
+            >
+              <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                auto_awesome
+              </span>
+              <span className="font-semibold text-xs tracking-wide">AI Chia Task</span>
+            </button>
+          )}
+
+          {(myRole === "ADMIN" || myRole === "MANAGER") && (
             <button onClick={onOpenCreateTask} className="h-10 px-4 bg-primary text-on-primary font-label-md text-label-md rounded-lg flex items-center gap-2 hover:bg-primary-fixed hover:text-on-primary-fixed transition-colors shadow-md shadow-primary/20 cursor-pointer">
               <span className="material-symbols-outlined text-[18px]">add</span> Nhiệm vụ mới
             </button>
@@ -249,19 +290,38 @@ export default function ProjectDetail({
             >
               <span className="material-symbols-outlined text-[20px]">more_vert</span>
             </button>
-            <div className={`absolute right-0 mt-2 w-52 bg-surface-container-high rounded-xl shadow-xl border border-outline-variant/20 transition-all z-50 overflow-hidden flex flex-col ${isMenuOpen ? "opacity-100 pointer-events-auto translate-y-0" : "opacity-0 pointer-events-none -translate-y-1"}`}>
-              <button onClick={() => { setActiveView("analytics"); setIsMenuOpen(false); }} className="text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-highest transition-colors flex items-center gap-2 cursor-pointer">
+            <div className={`absolute right-0 mt-2 w-56 bg-surface-container-high rounded-xl shadow-xl border border-outline-variant/20 transition-all z-50 overflow-hidden flex flex-col ${isMenuOpen ? "opacity-100 pointer-events-auto translate-y-0" : "opacity-0 pointer-events-none -translate-y-1"}`}>
+              <button onClick={() => { setActiveView("ai-chat"); setIsMenuOpen(false); }} className="text-left px-4 py-2.5 text-sm text-purple-300 hover:bg-purple-500/10 transition-colors flex items-center gap-2 cursor-pointer">
+                <span className="material-symbols-outlined text-[16px] text-purple-400">smart_toy</span>
+                Trợ lý AI dự án
+              </button>
+              {(myRole === "ADMIN" || myRole === "MANAGER") && (
+                <button onClick={() => { setActiveView("ai-decompose"); setIsMenuOpen(false); }} className="text-left px-4 py-2.5 text-sm text-purple-300 hover:bg-purple-500/10 transition-colors flex items-center gap-2 cursor-pointer border-t border-outline-variant/10">
+                  <span className="material-symbols-outlined text-[16px] text-purple-400">auto_awesome</span>
+                  AI Phân rã nhiệm vụ
+                </button>
+              )}
+              <button onClick={() => { setActiveView("analytics"); setIsMenuOpen(false); }} className="text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-highest transition-colors flex items-center gap-2 cursor-pointer border-t border-outline-variant/10">
                 <span className="material-symbols-outlined text-[16px] text-primary">analytics</span>
                 Báo cáo & Thống kê
               </button>
-              <button onClick={() => { navigate(`/projects/${selectedProject.id}/members`); setIsMenuOpen(false); }} className="text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-highest transition-colors flex items-center gap-2 cursor-pointer border-t border-outline-variant/10">
+              <button onClick={() => { setActiveView("members"); setIsMenuOpen(false); }} className="text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-highest transition-colors flex items-center gap-2 cursor-pointer border-t border-outline-variant/10">
                 <span className="material-symbols-outlined text-[16px] text-on-surface-variant">group</span>
                 Quản lý thành viên
               </button>
-              <button onClick={() => { navigate(`/projects/${selectedProject.id}/archive`); setIsMenuOpen(false); }} className="text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-highest transition-colors flex items-center gap-2 cursor-pointer">
+              <button onClick={() => { setActiveView("archive"); setIsMenuOpen(false); }} className="text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-highest transition-colors flex items-center gap-2 cursor-pointer border-t border-outline-variant/10">
                 <span className="material-symbols-outlined text-[16px] text-on-surface-variant">inventory_2</span>
                 Kho lưu trữ
               </button>
+              {(myRole === "ADMIN" || myRole === "MANAGER") && (
+                <button
+                  onClick={() => { setActiveView("github"); setIsMenuOpen(false); }}
+                  className="text-left px-4 py-2.5 text-sm text-primary hover:bg-primary/10 transition-colors flex items-center gap-2 cursor-pointer border-t border-outline-variant/10"
+                >
+                  <span className="material-symbols-outlined text-[16px]">sync_alt</span>
+                  Tích hợp GitHub Webhook
+                </button>
+              )}
               {(myRole === "ADMIN" || myRole === "MANAGER") && (
                 <button onClick={() => { onOpenInviteMember(); setIsMenuOpen(false); }} className="text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-highest transition-colors flex items-center gap-2 border-t border-outline-variant/10 cursor-pointer">
                   <span className="material-symbols-outlined text-[16px] text-primary">person_add</span>
@@ -269,14 +329,14 @@ export default function ProjectDetail({
                 </button>
               )}
               {(myRole === "ADMIN" || myRole === "MANAGER") && (
-                <button onClick={() => { onOpenEditProject(); setIsMenuOpen(false); }} className="text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-highest transition-colors flex items-center gap-2 cursor-pointer">
+                <button onClick={() => { onOpenEditProject(); setIsMenuOpen(false); }} className="text-left px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-highest transition-colors flex items-center gap-2 cursor-pointer border-t border-outline-variant/10">
                   <span className="material-symbols-outlined text-[16px] text-on-surface-variant">edit</span>
                   Sửa dự án
                 </button>
               )}
               {myRole === "ADMIN" && (
                 <>
-                  <button onClick={() => { onOpenTransfer(); setIsMenuOpen(false); }} className="text-left px-4 py-2.5 text-sm text-yellow-400 hover:bg-yellow-400/10 transition-colors flex items-center gap-2 cursor-pointer">
+                  <button onClick={() => { onOpenTransfer(); setIsMenuOpen(false); }} className="text-left px-4 py-2.5 text-sm text-yellow-400 hover:bg-yellow-400/10 transition-colors flex items-center gap-2 cursor-pointer border-t border-outline-variant/10">
                     <span className="material-symbols-outlined text-[16px]">swap_horiz</span>
                     Chuyển quyền Admin
                   </button>
@@ -297,41 +357,150 @@ export default function ProjectDetail({
         </div>
       </div>
 
-      {/* Switcher chế độ xem: Kanban vs Báo cáo thống kê */}
-      <div className="px-container-margin mb-3 shrink-0 flex items-center justify-between">
-        <div className="inline-flex items-center gap-1 bg-surface-container-low p-1 rounded-xl border border-outline-variant/15 shadow-inner">
+      {/* Switcher chế độ xem nội bộ (Sub-Views Tab Bar) */}
+      <div className="px-container-margin mb-3 shrink-0 overflow-x-auto custom-scrollbar pb-1">
+        <div className="inline-flex items-center gap-1.5 bg-surface-container-low p-1.5 rounded-2xl border border-outline-variant/15 shadow-sm">
           <button
             onClick={() => setActiveView("kanban")}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
               activeView === "kanban"
                 ? "bg-primary text-on-primary shadow-sm"
                 : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
             }`}
           >
-            <span className="material-symbols-outlined text-[16px]">view_kanban</span>
-            <span>Bảng Kanban</span>
+            <span className="material-symbols-outlined text-[17px]">view_kanban</span>
+            <span>Bảng công việc</span>
+          </button>
+          <button
+            onClick={() => setActiveView("members")}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
+              activeView === "members"
+                ? "bg-primary text-on-primary shadow-sm"
+                : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[17px]">group</span>
+            <span>Thành viên ({members.length})</span>
           </button>
           <button
             onClick={() => setActiveView("analytics")}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
               activeView === "analytics"
                 ? "bg-primary text-on-primary shadow-sm"
                 : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
             }`}
           >
-            <span className="material-symbols-outlined text-[16px]">analytics</span>
+            <span className="material-symbols-outlined text-[17px]">analytics</span>
             <span>Báo cáo & Thống kê</span>
           </button>
+          <button
+            onClick={() => setActiveView("archive")}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
+              activeView === "archive"
+                ? "bg-primary text-on-primary shadow-sm"
+                : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[17px]">inventory_2</span>
+            <span>Kho lưu trữ ({archivedTasks.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveView("ai-chat")}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
+              activeView === "ai-chat"
+                ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm shadow-purple-600/30"
+                : "text-purple-300 hover:text-white hover:bg-purple-600/20"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[17px]">smart_toy</span>
+            <span>Trợ lý AI</span>
+          </button>
+          {(myRole === "ADMIN" || myRole === "MANAGER") && (
+            <button
+              onClick={() => setActiveView("ai-decompose")}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
+                activeView === "ai-decompose"
+                  ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm shadow-purple-600/30"
+                  : "text-purple-300 hover:text-white hover:bg-purple-600/20"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[17px]">auto_awesome</span>
+              <span>AI Chia Task</span>
+            </button>
+          )}
+          {(myRole === "ADMIN" || myRole === "MANAGER") && (
+            <button
+              onClick={() => setActiveView("github")}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
+                activeView === "github"
+                  ? "bg-primary text-on-primary shadow-sm"
+                  : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[17px]">sync_alt</span>
+              <span>GitHub Webhook</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {activeView === "analytics" ? (
+      {/* Render Sub-Views nội bộ theo activeView */}
+      {activeView === "members" && (
+        <ProjectMembersView
+          members={members}
+          tasks={tasks}
+          currentUser={currentUser}
+          myRole={myRole}
+          onOpenInviteMember={onOpenInviteMember}
+          onOpenEditRole={onOpenEditRole}
+          onOpenConfirmKick={onOpenConfirmKick}
+          onOpenProfile={(member) => setProfileMember(member)}
+          onBackToTasks={() => setActiveView("kanban")}
+        />
+      )}
+
+      {activeView === "analytics" && (
         <ProjectAnalyticsView
           projectId={selectedProject?.id}
           selectedProject={selectedProject}
           onBackToKanban={() => setActiveView("kanban")}
         />
-      ) : (
+      )}
+
+      {activeView === "archive" && (
+        <ProjectArchiveView
+          archivedTasks={archivedTasks}
+          selectedProject={selectedProject}
+          onBackToKanban={() => setActiveView("kanban")}
+        />
+      )}
+
+      {activeView === "github" && (
+        <GitHubIntegrationView
+          selectedProject={selectedProject}
+          onBackToKanban={() => setActiveView("kanban")}
+          onProjectUpdated={() => {}}
+        />
+      )}
+
+      {activeView === "ai-chat" && (
+        <AiChatView
+          projectId={selectedProject?.id}
+          selectedProject={selectedProject}
+          onBackToKanban={() => setActiveView("kanban")}
+        />
+      )}
+
+      {activeView === "ai-decompose" && (
+        <AiTaskDecompositionView
+          projectId={selectedProject?.id}
+          projectMembers={members}
+          onTasksCreated={handleAiTasksCreated}
+          onBackToKanban={() => setActiveView("kanban")}
+        />
+      )}
+
+      {activeView === "kanban" && (
         <>
           {/* Analytics Bar — Click để mở trang báo cáo chi tiết */}
           <div
@@ -508,15 +677,15 @@ export default function ProjectDetail({
       </>
       )}
 
-      {/* AI Assistant Floating Button — chỉ Admin/Manager mới thấy (ẩn khi chat đang mở) */}
-      {(myRole === "ADMIN" || myRole === "MANAGER") && !isAiChatOpen && (
+      {/* AI Assistant Floating Button — chỉ Admin/Manager mới thấy (ẩn khi đang ở tab ai-chat) */}
+      {(myRole === "ADMIN" || myRole === "MANAGER") && activeView !== "ai-chat" && (
         <div className="fixed bottom-stack-lg right-stack-lg z-30">
           <div className="relative">
             <div className="absolute -inset-2 bg-primary/20 rounded-full blur-xl opacity-0 hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
             <button
-              onClick={() => setIsAiChatOpen(true)}
-              title="Trợ lý AI dự án"
-              className="relative w-14 h-14 bg-surface-container text-on-surface rounded-full shadow-xl flex items-center justify-center hover:bg-surface-container-high hover:scale-105 transition-all duration-300 z-10 border border-outline-variant/30"
+              onClick={() => setActiveView("ai-chat")}
+              title="Mở Trợ lý AI dự án"
+              className="relative w-14 h-14 bg-surface-container text-on-surface rounded-full shadow-xl flex items-center justify-center hover:bg-surface-container-high hover:scale-105 transition-all duration-300 z-10 border border-outline-variant/30 cursor-pointer"
             >
               <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>magic_button</span>
             </button>
@@ -582,12 +751,13 @@ export default function ProjectDetail({
         </div>
       )}
 
-      {/* AI Chat Modal — chỉ render khi admin/manager mở */}
-      <AiChatModal
-        isOpen={isAiChatOpen}
-        onClose={() => setIsAiChatOpen(false)}
-        projectId={selectedProject?.id}
-      />
+      {/* Profile modal khi click xem hồ sơ thành viên trong tab Members */}
+      {profileMember && (
+        <MemberProfileModal
+          member={profileMember}
+          onClose={() => setProfileMember(null)}
+        />
+      )}
     </div>
   );
 }

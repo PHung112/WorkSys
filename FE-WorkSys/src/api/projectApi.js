@@ -13,6 +13,8 @@ const projectApi = {
   updateMemberRole: (projectId, userId, data) => http.put(`/api/projects/${projectId}/members/${userId}`, data),
   getArchivedTasks: (projectId) => http.get(`/api/projects/${projectId}/archived-tasks`),
   getProjectAnalytics: (projectId) => http.get(`/api/projects/${projectId}/analytics`),
+  updateGithubConfig: (projectId, data) => http.put(`/api/projects/${projectId}/github-config`, data),
+  testGithubWebhook: () => http.get("/api/webhooks/github"),
 };
 
-export default projectApi
+export default projectApi;

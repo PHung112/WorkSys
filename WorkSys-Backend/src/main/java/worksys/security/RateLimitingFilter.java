@@ -43,8 +43,8 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // 2. Chỉ kiểm soát các API bắt đầu bằng /api và không chặn websocket (/ws)
-        if (!path.startsWith("/api") || path.startsWith("/ws")) {
+        // 2. Chỉ kiểm soát các API bắt đầu bằng /api và không chặn websocket (/ws) hay webhook (/api/webhooks)
+        if (!path.startsWith("/api") || path.startsWith("/ws") || path.startsWith("/api/webhooks")) {
             filterChain.doFilter(request, response);
             return;
         }

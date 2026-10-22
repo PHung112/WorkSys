@@ -555,8 +555,10 @@ export default function HomePage() {
               <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary to-indigo-800 opacity-90"></div>
 
               <div className="relative z-10 text-on-primary">
-                <div className="flex items-center gap-2 mb-8">
-                  <span className="material-symbols-outlined text-3xl">developer_board</span>
+                <div className="flex items-center gap-2.5 mb-8">
+                  <div className="w-8 h-8 rounded-lg bg-on-primary/15 border border-on-primary/20 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-xl">layers</span>
+                  </div>
                   <span className="font-display font-bold text-xl tracking-tight">WorkSys Team</span>
                 </div>
 

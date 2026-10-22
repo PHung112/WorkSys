@@ -157,7 +157,26 @@ public class ProjectController {
         return ResponseEntity.ok(taskService.getArchivedTasksByProjectDTO(projectId));
     }
 
+    // Cập nhật cấu hình GitHub cho project (chỉ Admin hoặc Manager)
+    @PutMapping("/{projectId}/github-config")
+    public ResponseEntity<?> updateGithubConfig(@PathVariable Long projectId,
+            @RequestBody GithubConfigRequest request,
+            HttpServletRequest httpRequest) {
+        Long userId = getCurrentUserId(httpRequest);
+        try {
+            Project updated = projectService.updateGithubConfig(projectId, userId, request.githubRepo, request.githubSecret);
+            return ResponseEntity.ok(updated);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(403).body(java.util.Map.of("message", e.getMessage()));
+        }
+    }
+
     // DTO classes
+    public static class GithubConfigRequest {
+        public String githubRepo;
+        public String githubSecret;
+    }
+
     public static class CreateProjectRequest {
         public String name;
         public String description;

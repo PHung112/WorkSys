@@ -3,8 +3,12 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
+  root: import.meta.dirname,
   define: {
     global: 'globalThis',
+  },
+  resolve: {
+    preserveSymlinks: false,
   },
   plugins: [react(), tailwindcss()],
   server: {

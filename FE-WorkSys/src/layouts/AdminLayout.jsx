@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import Logo from '../components/common/Logo';
 
 const AdminLayout = () => {
   const navigate = useNavigate();
@@ -31,8 +32,7 @@ const AdminLayout = () => {
       {/* Sidebar */}
       <aside className="w-64 flex-shrink-0 border-r border-outline-variant/20 bg-surface flex flex-col">
         <div className="h-16 flex items-center px-6 border-b border-outline-variant/20">
-          <div className="w-8 h-8 bg-error rounded-lg flex items-center justify-center font-bold text-lg text-on-error">W</div>
-          <span className="ml-3 font-sans text-xl font-bold text-on-surface tracking-tight">WorkSys</span>
+          <Logo to="/admin" badge="Admin" />
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">

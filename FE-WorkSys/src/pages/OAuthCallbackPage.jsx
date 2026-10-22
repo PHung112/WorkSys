@@ -57,18 +57,13 @@ export default function OAuthCallbackPage() {
     <main className="min-h-screen flex items-center justify-center p-container-margin">
       <div className="flex flex-col w-full">
         <div className="flex flex-col items-center justify-center w-full max-w-md mx-auto text-center gap-stack-lg">
-          {/* Cipher Logo Node */}
-          <div className="relative flex items-center justify-center w-24 h-24 bg-surface-container rounded-2xl shadow-xl">
+          {/* WorkSys Logo Node */}
+          <div className="relative flex items-center justify-center">
             {/* Ethereal Glow */}
-            <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full mix-blend-screen animate-pulse"></div>
-            {/* Geometric Logo SVG */}
-            <svg className="w-12 h-12 text-primary relative z-10" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <polygon points="12 2 2 7 2 17 12 22 22 17 22 7 12 2"></polygon>
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M12 2v20"></path>
-              <path d="M2 7l20 10"></path>
-              <path d="M2 17L22 7"></path>
-            </svg>
+            <div className="absolute inset-0 bg-primary/25 blur-3xl rounded-full mix-blend-screen animate-pulse scale-150"></div>
+            <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-primary to-tertiary flex items-center justify-center shadow-2xl shadow-primary/30 relative z-10">
+              <span className="material-symbols-outlined text-on-primary text-5xl">layers</span>
+            </div>
           </div>
           {/* Typography & Spinner */}
           <div className="flex flex-col items-center gap-stack-sm mt-stack-md">

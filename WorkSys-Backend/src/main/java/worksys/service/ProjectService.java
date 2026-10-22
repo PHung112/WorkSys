@@ -269,4 +269,40 @@ public class ProjectService {
                 .orElseThrow(() -> new RuntimeException("Member not found"))
                 .getRole();
     }
+
+    // Cập nhật cấu hình tích hợp GitHub cho dự án (Repository & Secret Webhook)
+    public Project updateGithubConfig(Long projectId, Long actorId, String githubRepo, String githubSecret) {
+        Role role = getMemberRole(projectId, actorId);
+        if (role != Role.ADMIN && role != Role.MANAGER) {
+            throw new RuntimeException("Chỉ ADMIN hoặc MANAGER mới có quyền cấu hình tích hợp GitHub");
+        }
+
+        Project project = getProjectById(projectId);
+        project.setGithubRepo(cleanGithubRepo(githubRepo));
+        project.setGithubSecret(githubSecret != null && !githubSecret.isBlank() ? githubSecret.trim() : null);
+
+        Project saved = projectRepository.save(project);
+        cacheEvictionService.evictProjectDetails(projectId);
+        realtimeEventService.publishProjectChanged(saved, "PROJECT_UPDATED", actorId);
+        return saved;
+    }
+
+    // Chuẩn hóa tên repository về dạng owner/repo (ví dụ: https://github.com/owner/repo.git -> owner/repo)
+    public static String cleanGithubRepo(String input) {
+        if (input == null || input.isBlank()) {
+            return null;
+        }
+        String repo = input.trim();
+        repo = repo.replaceFirst("^https?://github\\.com/", "");
+        if (repo.endsWith(".git")) {
+            repo = repo.substring(0, repo.length() - 4);
+        }
+        while (repo.startsWith("/")) {
+            repo = repo.substring(1);
+        }
+        while (repo.endsWith("/")) {
+            repo = repo.substring(0, repo.length() - 1);
+        }
+        return repo.isBlank() ? null : repo;
+    }
 }

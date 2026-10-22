@@ -4,6 +4,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import worksys.dto.AiBatchCreateTasksRequestDTO;
 import worksys.dto.ProjectAnalyticsDTO;
 import worksys.dto.TaskDTO;
 import worksys.entity.*;
@@ -14,7 +15,10 @@ import worksys.repository.UserRepository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -542,5 +546,91 @@ public class TaskService {
                 .toList();
 
         return new ProjectAnalyticsDTO(kpi, statusBreakdown, memberWorkloads, completionTrend, upcomingDeadlines);
+    }
+
+    /**
+     * Chức năng: Lưu hàng loạt tasks vào Database trong một Transaction duy nhất (Batch Ingestion)
+     * Thường được gọi sau khi Admin/Manager duyệt danh sách task do AI gợi ý.
+     * - Tự động validate deadline, gán người thực hiện mặc định nếu trống
+     * - Kích hoạt thông báo Notification cho từng thành viên
+     * - Xóa cache Redis (project_analytics) để dashboard cập nhật ngay
+     * - Phát sự kiện WebSocket cho toàn bộ thành viên đang mở dự án
+     */
+    @Transactional
+    public List<TaskDTO> batchCreateTasks(Long projectId, List<AiBatchCreateTasksRequestDTO.CreateSubTaskItemDTO> taskItems) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Dự án không tồn tại với ID: " + projectId));
+
+        User currentUser = getCurrentUser();
+        LocalDate today = LocalDate.now();
+
+        List<Task> tasksToSave = new ArrayList<>();
+
+        for (AiBatchCreateTasksRequestDTO.CreateSubTaskItemDTO item : taskItems) {
+            if (item.getTitle() == null || item.getTitle().trim().isEmpty()) {
+                continue; // Bỏ qua nếu task không có tiêu đề
+            }
+
+            Task task = new Task();
+            task.setProject(project);
+            task.setTitle(item.getTitle().trim());
+            task.setDescription(item.getDescription() != null ? item.getDescription().trim() : "");
+
+            // Xử lý deadline: nếu không truyền hoặc là ngày quá khứ thì mặc định lấy 7 ngày tới
+            LocalDate deadline = today.plusDays(7);
+            if (item.getDeadline() != null && !item.getDeadline().isBlank()) {
+                try {
+                    LocalDate parsed = LocalDate.parse(item.getDeadline().trim());
+                    deadline = parsed.isBefore(today) ? today : parsed;
+                } catch (Exception ignored) {
+                }
+            }
+            task.setDeadline(deadline);
+            task.setStatus(TaskStatus.TODO);
+            task.setAttachmentUrl(item.getAttachmentUrl());
+
+            // Gán người thực hiện: lấy từ request hoặc mặc định gán cho chính currentUser (người tạo)
+            Set<User> assignees = new HashSet<>();
+            if (item.getAssigneeIds() != null && !item.getAssigneeIds().isEmpty()) {
+                for (Long uid : item.getAssigneeIds()) {
+                    userRepository.findById(uid).ifPresent(assignees::add);
+                }
+            }
+            if (assignees.isEmpty()) {
+                assignees.add(currentUser);
+            }
+            task.setAssignees(assignees);
+
+            tasksToSave.add(task);
+        }
+
+        if (tasksToSave.isEmpty()) {
+            throw new RuntimeException("Không có nhiệm vụ hợp lệ nào để tạo.");
+        }
+
+        // Lưu tất cả task vào cơ sở dữ liệu cùng một lúc
+        List<Task> savedTasks = taskRepository.saveAll(tasksToSave);
+
+        // Gửi thông báo đến từng người được giao việc
+        for (Task t : savedTasks) {
+            for (User assignee : t.getAssignees()) {
+                try {
+                    notificationService.createTaskAssignedNotification(
+                            t.getId(), t.getTitle(),
+                            project.getId(), project.getName(),
+                            currentUser.getId(), assignee.getId()
+                    );
+                } catch (Exception ignored) {
+                }
+            }
+        }
+
+        // Xóa cache thống kê Redis 1 lần duy nhất để tối ưu hiệu năng
+        cacheEvictionService.evictProjectAnalytics(project.getId());
+
+        // Bắn WebSocket thông báo đến các client khác
+        realtimeEventService.publishProjectChanged(project, "BATCH_TASKS_CREATED", currentUser.getId());
+
+        return savedTasks.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 }
