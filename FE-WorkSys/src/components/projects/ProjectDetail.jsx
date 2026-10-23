@@ -585,7 +585,7 @@ export default function ProjectDetail({
                                     t.status === 'DONE' ? 'bg-green-500' : 'bg-outline-variant'
                                 }`}></div>
                               <div className="flex items-start justify-between gap-2">
-                                <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">TSK-{taskNumberMap[t.id]}</span>
+                                <span className="font-mono text-label-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20 tracking-wider uppercase">TASK #{t.id}</span>
                                 <div className="flex gap-1">
                                   {/* Fake priority dots based on ID logic or just static for now */}
                                   <span className="w-1.5 h-1.5 rounded-full bg-tertiary"></span>

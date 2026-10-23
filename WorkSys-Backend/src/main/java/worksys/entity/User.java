@@ -40,6 +40,13 @@ public class User {
     @Column(nullable = true)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @JsonIgnore
+    @Column(name = "github_access_token", nullable = true, columnDefinition = "TEXT")
+    private String githubAccessToken;
+
+    @Column(name = "github_username", nullable = true)
+    private String githubUsername;
+
     // constructor rỗng (JPA BẮT BUỘC)
     public User() {
     }
@@ -115,5 +122,21 @@ public class User {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getGithubAccessToken() {
+        return githubAccessToken;
+    }
+
+    public void setGithubAccessToken(String githubAccessToken) {
+        this.githubAccessToken = githubAccessToken;
+    }
+
+    public String getGithubUsername() {
+        return githubUsername;
+    }
+
+    public void setGithubUsername(String githubUsername) {
+        this.githubUsername = githubUsername;
     }
 }

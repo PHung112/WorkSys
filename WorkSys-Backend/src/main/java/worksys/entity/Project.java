@@ -36,6 +36,10 @@ public class Project {
     @Column(name = "github_secret")
     private String githubSecret;
 
+    // ID của Webhook được tạo trên GitHub qua REST API (để hủy/cập nhật tự động)
+    @Column(name = "github_webhook_id")
+    private Long githubWebhookId;
+
     public Project() {
     }
 
@@ -102,5 +106,13 @@ public class Project {
 
     public void setGithubSecret(String githubSecret) {
         this.githubSecret = githubSecret;
+    }
+
+    public Long getGithubWebhookId() {
+        return githubWebhookId;
+    }
+
+    public void setGithubWebhookId(Long githubWebhookId) {
+        this.githubWebhookId = githubWebhookId;
     }
 }
