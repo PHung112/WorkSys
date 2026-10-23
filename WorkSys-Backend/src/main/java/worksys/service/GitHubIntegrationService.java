@@ -51,7 +51,7 @@ public class GitHubIntegrationService {
         this.projectService = projectService;
         this.cacheEvictionService = cacheEvictionService;
         this.realtimeEventService = realtimeEventService;
-        this.restTemplate = new RestTemplate();
+        this.restTemplate = new RestTemplate(new org.springframework.http.client.JdkClientHttpRequestFactory());
         this.objectMapper = new ObjectMapper();
     }
 
@@ -249,51 +249,40 @@ public class GitHubIntegrationService {
 
             if (existingHookId != null) {
                 log.info("Webhook đã tồn tại trên repo {} với ID {}. Tiến hành cập nhật...", cleanRepo, existingHookId);
-                // Cập nhật hook hiện tại
-                Map<String, Object> updatePayload = new HashMap<>();
-                updatePayload.put("active", true);
-                updatePayload.put("events", List.of("push", "pull_request"));
+                try {
+                    Map<String, Object> updatePayload = new HashMap<>();
+                    updatePayload.put("active", true);
+                    updatePayload.put("events", List.of("push", "pull_request"));
 
-                Map<String, Object> config = new HashMap<>();
-                config.put("url", targetWebhookUrl);
-                config.put("content_type", "json");
-                config.put("secret", generatedSecret);
-                config.put("insecure_ssl", "0");
-                updatePayload.put("config", config);
+                    Map<String, Object> config = new HashMap<>();
+                    config.put("url", targetWebhookUrl);
+                    config.put("content_type", "json");
+                    config.put("secret", generatedSecret);
+                    config.put("insecure_ssl", "0");
+                    updatePayload.put("config", config);
 
-                HttpEntity<Map<String, Object>> updateRequest = new HttpEntity<>(updatePayload, headers);
-                restTemplate.exchange(
-                        "https://api.github.com/repos/" + cleanRepo + "/hooks/" + existingHookId,
-                        HttpMethod.PATCH,
-                        updateRequest,
-                        String.class
-                );
-                webhookId = existingHookId;
+                    HttpEntity<Map<String, Object>> updateRequest = new HttpEntity<>(updatePayload, headers);
+                    restTemplate.exchange(
+                            "https://api.github.com/repos/" + cleanRepo + "/hooks/" + existingHookId,
+                            HttpMethod.PATCH,
+                            updateRequest,
+                            String.class
+                    );
+                    webhookId = existingHookId;
+                } catch (Exception updateEx) {
+                    log.warn("Cập nhật Webhook ID {} thất bại, tiến hành xóa và tạo mới: {}", existingHookId, updateEx.getMessage());
+                    try {
+                        restTemplate.exchange(
+                                "https://api.github.com/repos/" + cleanRepo + "/hooks/" + existingHookId,
+                                HttpMethod.DELETE,
+                                new HttpEntity<>(headers),
+                                Void.class
+                        );
+                    } catch (Exception ignored) {}
+                    webhookId = createNewWebhook(headers, cleanRepo, targetWebhookUrl, generatedSecret);
+                }
             } else {
-                // 2. Tạo mới Webhook qua REST API
-                log.info("Đang tạo Webhook mới trên repo {} trỏ về {}", cleanRepo, targetWebhookUrl);
-                Map<String, Object> createPayload = new HashMap<>();
-                createPayload.put("name", "web");
-                createPayload.put("active", true);
-                createPayload.put("events", List.of("push", "pull_request"));
-
-                Map<String, Object> config = new HashMap<>();
-                config.put("url", targetWebhookUrl);
-                config.put("content_type", "json");
-                config.put("secret", generatedSecret);
-                config.put("insecure_ssl", "0");
-                createPayload.put("config", config);
-
-                HttpEntity<Map<String, Object>> createRequest = new HttpEntity<>(createPayload, headers);
-                ResponseEntity<String> createResponse = restTemplate.exchange(
-                        "https://api.github.com/repos/" + cleanRepo + "/hooks",
-                        HttpMethod.POST,
-                        createRequest,
-                        String.class
-                );
-
-                JsonNode createdNode = objectMapper.readTree(createResponse.getBody());
-                webhookId = createdNode.path("id").asLong();
+                webhookId = createNewWebhook(headers, cleanRepo, targetWebhookUrl, generatedSecret);
             }
 
             // 3. Cập nhật thông tin vào Project
@@ -332,6 +321,35 @@ public class GitHubIntegrationService {
             log.error("Lỗi khi tự động kích hoạt Webhook: {}", e.getMessage(), e);
             throw new RuntimeException("Không thể tự động tạo Webhook: " + e.getMessage());
         }
+    }
+
+    /**
+     * Tạo Webhook mới trên GitHub qua REST API
+     */
+    private Long createNewWebhook(HttpHeaders headers, String cleanRepo, String targetWebhookUrl, String generatedSecret) throws Exception {
+        log.info("Đang tạo Webhook mới trên repo {} trỏ về {}", cleanRepo, targetWebhookUrl);
+        Map<String, Object> createPayload = new HashMap<>();
+        createPayload.put("name", "web");
+        createPayload.put("active", true);
+        createPayload.put("events", List.of("push", "pull_request"));
+
+        Map<String, Object> config = new HashMap<>();
+        config.put("url", targetWebhookUrl);
+        config.put("content_type", "json");
+        config.put("secret", generatedSecret);
+        config.put("insecure_ssl", "0");
+        createPayload.put("config", config);
+
+        HttpEntity<Map<String, Object>> createRequest = new HttpEntity<>(createPayload, headers);
+        ResponseEntity<String> createResponse = restTemplate.exchange(
+                "https://api.github.com/repos/" + cleanRepo + "/hooks",
+                HttpMethod.POST,
+                createRequest,
+                String.class
+        );
+
+        JsonNode createdNode = objectMapper.readTree(createResponse.getBody());
+        return createdNode.path("id").asLong();
     }
 
     /**
