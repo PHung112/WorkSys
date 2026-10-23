@@ -700,46 +700,46 @@ export default function GitHubIntegrationView({
               <div className="space-y-3">
                 <div className="p-3 bg-surface-container rounded-xl border border-outline-variant/10">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-mono text-emerald-400 font-bold text-xs">
-                      done #&lt;id&gt;
+                    <span className="font-mono text-tertiary font-bold text-xs">
+                      done #&lt;id&gt; [nội dung]
                     </span>
-                    <span className="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] font-bold rounded">
-                      HOÀN THÀNH
-                    </span>
-                  </div>
-                  <p className="text-on-surface-variant text-[11px] m-0">
-                    Ví dụ: <code className="text-primary font-bold">git commit -m "done #5 fix bug login"</code>
-                    <br />➔ Tự động chuyển Task #5 sang <strong>DONE</strong> và lưu link commit!
-                  </p>
-                </div>
-
-                <div className="p-3 bg-surface-container rounded-xl border border-outline-variant/10">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-mono text-blue-400 font-bold text-xs">
-                      start #&lt;id&gt;
-                    </span>
-                    <span className="px-1.5 py-0.5 bg-blue-500/10 text-blue-400 text-[10px] font-bold rounded">
-                      ĐANG LÀM
-                    </span>
-                  </div>
-                  <p className="text-on-surface-variant text-[11px] m-0">
-                    Ví dụ: <code className="text-primary font-bold">git commit -m "start #5 bat dau lam"</code>
-                    <br />➔ Tự động chuyển Task #5 sang <strong>IN_PROGRESS</strong>.
-                  </p>
-                </div>
-
-                <div className="p-3 bg-surface-container rounded-xl border border-outline-variant/10">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-mono text-purple-400 font-bold text-xs">
-                      Pull Request (PR)
-                    </span>
-                    <span className="px-1.5 py-0.5 bg-purple-500/10 text-purple-400 text-[10px] font-bold rounded">
-                      TỰ ĐỘNG SYNC
+                    <span className="px-1.5 py-0.5 bg-tertiary/10 text-tertiary text-[10px] font-bold rounded">
+                      ĐÃ NỘP (SUBMITTED)
                     </span>
                   </div>
                   <p className="text-on-surface-variant text-[11px] m-0 leading-relaxed">
-                    ➔ <strong>Mở PR</strong> có chứa <code className="text-primary">done #5</code>: Task chuyển sang <strong>SUBMITTED</strong> (chờ duyệt).
-                    <br />➔ <strong>Khi PR được Merge</strong>: Task tự động sang <strong>DONE</strong>!
+                    Ví dụ: <code className="text-primary font-bold">git commit -m "done #5 hoàn thành code auth"</code>
+                    <br />➔ Tự động nộp bài (chuyển sang <strong>SUBMITTED</strong>) và lưu link commit GitHub!
+                  </p>
+                </div>
+
+                <div className="p-3 bg-surface-container rounded-xl border border-outline-variant/10">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-medium text-primary font-bold text-xs flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[14px]">touch_app</span>
+                      <span>Nhận Task (1-Click)</span>
+                    </span>
+                    <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded">
+                      ĐANG LÀM (IN_PROGRESS)
+                    </span>
+                  </div>
+                  <p className="text-on-surface-variant text-[11px] m-0 leading-relaxed">
+                    Chỉ cần bấm nút <strong>"Nhận Task"</strong> trong chi tiết công việc, Task sẽ tự động nhảy sang ô <strong>ĐANG LÀM</strong> ngay lập tức mà không cần phải commit `start`.
+                  </p>
+                </div>
+
+                <div className="p-3 bg-surface-container rounded-xl border border-outline-variant/10">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-medium text-emerald-400 font-bold text-xs flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[14px]">verified</span>
+                      <span>Duyệt Hoàn Thành (DONE)</span>
+                    </span>
+                    <span className="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] font-bold rounded">
+                      NGƯỜI DUYỆT
+                    </span>
+                  </div>
+                  <p className="text-on-surface-variant text-[11px] m-0 leading-relaxed">
+                    Sau khi lập trình viên nộp qua commit GitHub, <strong>Admin / Quản lý</strong> sẽ kiểm tra sản phẩm và kéo thả hoặc duyệt Task sang cột <strong>HOÀN THÀNH (DONE)</strong>.
                   </p>
                 </div>
               </div>

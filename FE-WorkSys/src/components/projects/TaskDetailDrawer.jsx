@@ -142,8 +142,9 @@ export default function TaskDetailDrawer({
             <div className="flex items-center gap-2 mb-4">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-container-high border border-outline-variant/20 text-xs text-on-surface-variant font-mono">
                 <span className="material-symbols-outlined !text-[15px] text-primary">terminal</span>
-                <span>Cú pháp GitHub:</span>
-                <code className="text-primary font-bold">done #{task.id} description</code>
+                <span>Cú pháp nộp bài:</span>
+                <code className="text-primary font-bold">done #{task.id} [nội dung]</code>
+                <span className="text-[10px] text-on-surface-variant/70 font-sans">➔ Tự chuyển sang ĐÃ NỘP (SUBMITTED)</span>
               </span>
             </div>
 

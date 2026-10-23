@@ -178,17 +178,18 @@ public class GitHubWebhookService {
             log.info("Phân tích commit: \"{}\" bởi {}", message, authorName);
 
             // 1. Kiểm tra cú pháp DONE (done #15, fix #15, close #15, ...)
+            // Theo quy trình: Commit xong chuyển sang SUBMITTED (Đã nộp), chờ Admin/Manager duyệt hoàn thành
             Matcher doneMatcher = DONE_PATTERN.matcher(message);
             while (doneMatcher.find()) {
                 Long taskId = Long.parseLong(doneMatcher.group(1));
                 if (processedTaskIds.add(taskId)) {
-                    if (updateTaskToDone(taskId, commitUrl, authorName, "commit: " + message)) {
+                    if (updateTaskToSubmitted(taskId, commitUrl, authorName)) {
                         updatedCount++;
                     }
                 }
             }
 
-            // 2. Kiểm tra cú pháp START / DOING (start #15, doing #15)
+            // 2. Kiểm tra cú pháp START / DOING (start #15, doing #15) - Tùy chọn bổ sung
             Matcher progressMatcher = PROGRESS_PATTERN.matcher(message);
             while (progressMatcher.find()) {
                 Long taskId = Long.parseLong(progressMatcher.group(1));
@@ -204,7 +205,7 @@ public class GitHubWebhookService {
     }
 
     /**
-     * Xử lý sự kiện Pull Request (Opened -> SUBMITTED, Merged -> DONE)
+     * Xử lý sự kiện Pull Request (Opened & Merged -> SUBMITTED để chờ duyệt)
      */
     private int handlePullRequestEvent(JsonNode rootNode, String repoFullName) {
         String action = rootNode.has("action") ? rootNode.get("action").asText() : "";
@@ -222,14 +223,14 @@ public class GitHubWebhookService {
         int updatedCount = 0;
 
         if ("closed".equalsIgnoreCase(action) && isMerged) {
-            // PR đã được MERGE vào nhánh chính -> Hoàn thành nhiệm vụ (DONE)
+            // PR đã được MERGE vào nhánh chính -> Chuyển sang SUBMITTED kèm link PR để quản lý duyệt
             log.info("Phát hiện Pull Request đã MERGED: \"{}\"", title);
             Matcher doneMatcher = DONE_PATTERN.matcher(combinedText);
             Set<Long> processed = new HashSet<>();
             while (doneMatcher.find()) {
                 Long taskId = Long.parseLong(doneMatcher.group(1));
                 if (processed.add(taskId)) {
-                    if (updateTaskToDone(taskId, prUrl, "PR Reviewer", "Merged PR: " + title)) {
+                    if (updateTaskToSubmitted(taskId, prUrl, "PR Reviewer")) {
                         updatedCount++;
                     }
                 }

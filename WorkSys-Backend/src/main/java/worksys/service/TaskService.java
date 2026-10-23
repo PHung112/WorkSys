@@ -204,8 +204,8 @@ public class TaskService {
         User user = userRepository.findById(memberId).orElseThrow();
         task.getAcceptedUsers().add(user);
 
-        // Chỉ chuyển sang IN_PROGRESS khi tất cả những người được giao đều đã nhận
-        if (task.getAcceptedUsers().size() == task.getAssignees().size()) {
+        // Khi người được giao bấm nhận task -> chuyển ngay sang IN_PROGRESS (Đang làm)
+        if (task.getStatus() == TaskStatus.TODO) {
             task.setStatus(TaskStatus.IN_PROGRESS);
         }
         
