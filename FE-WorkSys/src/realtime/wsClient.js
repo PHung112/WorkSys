@@ -6,7 +6,16 @@ let isConnected = false;
 const onConnectQueue = [];
 
 function getWsUrl() {
-  return import.meta.env.VITE_WS_URL || "http://localhost:8080/ws";
+  if (import.meta.env.VITE_WS_URL) {
+    return import.meta.env.VITE_WS_URL;
+  }
+  if (import.meta.env.VITE_API_URL) {
+    return `${import.meta.env.VITE_API_URL}/ws`;
+  }
+  if (typeof window !== "undefined" && window.location.hostname !== "localhost") {
+    return "https://worksys.onrender.com/ws";
+  }
+  return "http://localhost:8080/ws";
 }
 
 function ensureClient() {

@@ -20,4 +20,17 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-charts': ['recharts'],
+          'vendor-dnd': ['@hello-pangea/dnd'],
+          'vendor-realtime': ['@stomp/stompjs', 'sockjs-client'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600,
+  },
 })

@@ -1,4 +1,6 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo } from "react";
+import { useMemberActionMenu } from "../../hooks/useMemberActionMenu";
+import MemberFloatingMenu from "./members/MemberFloatingMenu";
 
 // Component Trang hiển thị và quản lý danh sách thành viên dự án
 // Hỗ trợ tìm kiếm, lọc theo vai trò, và menu 3 chấm dọc (more_vert) cho từng thành viên:
@@ -18,19 +20,16 @@ export default function ProjectMembersView({
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
-  const [activeMenuMemberId, setActiveMenuMemberId] = useState(null);
-  const menuRef = useRef(null);
 
-  // Đóng menu 3 chấm khi click ra ngoài
-  useEffect(() => {
-    const handleOutsideClick = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setActiveMenuMemberId(null);
-      }
-    };
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, []);
+  // Custom Hook quản lý vị trí và tương tác Floating Menu
+  const {
+    activeMenuMemberId,
+    activeMember,
+    menuCoords,
+    menuRef,
+    handleToggleMenu,
+    handleCloseMenu,
+  } = useMemberActionMenu();
 
   // Sắp xếp danh sách: Đưa user hiện tại lên đầu tiên
   const sortedMembers = useMemo(() => {
@@ -139,7 +138,7 @@ export default function ProjectMembersView({
       </div>
 
       {/* Bảng danh sách thành viên */}
-      <div className="bg-surface-container-low border border-outline-variant/20 rounded-2xl overflow-hidden shadow-sm flex-1 flex flex-col">
+      <div className="bg-surface-container-low border border-outline-variant/20 rounded-2xl overflow-hidden shadow-sm flex-1 flex flex-col min-h-[340px]">
         <div className="overflow-x-auto flex-1 custom-scrollbar">
           <table className="w-full text-left border-collapse min-w-[640px]">
             <thead>
@@ -229,85 +228,18 @@ export default function ProjectMembersView({
                     </td>
 
                     {/* Cột 4: Nút Option 3 chấm dọc (more_vert) */}
-                    <td className="py-3.5 px-4 text-right relative">
-                      <div className="inline-block relative">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveMenuMemberId(isMenuOpen ? null : memberUserId);
-                          }}
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
-                            isMenuOpen
-                              ? "bg-surface-container-highest text-primary"
-                              : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high"
-                          }`}
-                          title="Tùy chọn thao tác"
-                        >
-                          <span className="material-symbols-outlined text-[20px]">more_vert</span>
-                        </button>
-
-                        {/* Dropdown Menu nổi */}
-                        {isMenuOpen && (
-                          <div
-                            ref={menuRef}
-                            className="absolute right-0 mt-1 w-48 bg-surface-container-high rounded-xl shadow-2xl border border-outline-variant/20 py-1.5 z-30 flex flex-col animate-in fade-in zoom-in-95 duration-150"
-                          >
-                            {/* Option 1: Xem hồ sơ */}
-                            <button
-                              onClick={() => {
-                                setActiveMenuMemberId(null);
-                                onOpenProfile(member);
-                              }}
-                              className="w-full text-left px-3.5 py-2 text-xs text-on-surface hover:bg-surface-container-highest flex items-center gap-2.5 transition-colors cursor-pointer"
-                            >
-                              <span className="material-symbols-outlined text-[16px] text-primary">account_circle</span>
-                              <span>Xem hồ sơ</span>
-                            </button>
-
-                            {/* Option 2: Phân quyền (Dành cho Admin) */}
-                            {myRole === "ADMIN" && !isSelf && (
-                              <button
-                                onClick={() => {
-                                  setActiveMenuMemberId(null);
-                                  onOpenEditRole(memberUserId, member.role || "MEMBER");
-                                }}
-                                className="w-full text-left px-3.5 py-2 text-xs text-on-surface hover:bg-surface-container-highest flex items-center gap-2.5 transition-colors cursor-pointer"
-                              >
-                                <span className="material-symbols-outlined text-[16px] text-amber-400">tune</span>
-                                <span>Phân quyền</span>
-                              </button>
-                            )}
-
-                            {/* Option 3: Nâng cấp lên Manager (Dành cho Manager đối với Member) */}
-                            {myRole === "MANAGER" && member.role === "MEMBER" && !isSelf && (
-                              <button
-                                onClick={() => {
-                                  setActiveMenuMemberId(null);
-                                  onOpenEditRole(memberUserId, "MANAGER");
-                                }}
-                                className="w-full text-left px-3.5 py-2 text-xs text-on-surface hover:bg-surface-container-highest flex items-center gap-2.5 transition-colors cursor-pointer"
-                              >
-                                <span className="material-symbols-outlined text-[16px] text-blue-400">arrow_upward</span>
-                                <span>Nâng Manager</span>
-                              </button>
-                            )}
-
-                            {/* Option 4: Xóa khỏi dự án (Dành cho Admin) */}
-                            {myRole === "ADMIN" && !isSelf && (
-                              <button
-                                onClick={() => {
-                                  setActiveMenuMemberId(null);
-                                  onOpenConfirmKick(memberUserId, member.username);
-                                }}
-                                className="w-full text-left px-3.5 py-2 text-xs text-error hover:bg-error/10 flex items-center gap-2.5 transition-colors border-t border-outline-variant/10 mt-1 pt-1.5 cursor-pointer"
-                              >
-                                <span className="material-symbols-outlined text-[16px]">person_remove</span>
-                                <span>Xóa khỏi dự án</span>
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                    <td className="py-3.5 px-4 text-right">
+                      <button
+                        onClick={(e) => handleToggleMenu(e, member)}
+                        className={`w-8 h-8 rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer ${
+                          isMenuOpen
+                            ? "bg-surface-container-highest text-primary"
+                            : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high"
+                        }`}
+                        title="Tùy chọn thao tác"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">more_vert</span>
+                      </button>
                     </td>
                   </tr>
                 );
@@ -327,6 +259,20 @@ export default function ProjectMembersView({
           </table>
         </div>
       </div>
+
+      {/* Dropdown Menu nổi toàn cục (Tự động canh vị trí trên/dưới & chiều cao vừa vặn) */}
+      <MemberFloatingMenu
+        menuRef={menuRef}
+        activeMember={activeMember}
+        menuCoords={menuCoords}
+        myRole={myRole}
+        currentUser={currentUser}
+        onViewProfile={onOpenProfile}
+        onEditRole={onOpenEditRole}
+        onPromoteManager={(targetId) => onOpenEditRole(targetId, "MANAGER")}
+        onKickMember={onOpenConfirmKick}
+        onClose={handleCloseMenu}
+      />
     </div>
   );
 }

@@ -2,16 +2,16 @@ import { useMemo } from "react";
 
 // Modal hiển thị thông tin hồ sơ chi tiết của thành viên trong dự án
 // kèm theo thống kê nhiệm vụ được giao trong dự án này.
-export default function MemberProfileModal({ isOpen, onClose, member, tasks = [], currentUser }) {
-  if (!isOpen || !member) return null;
+export default function MemberProfileModal({ isOpen = true, onClose, member, tasks = [], currentUser }) {
+  if (isOpen === false || !member) return null;
 
   const memberUserId = member.userId || member.id;
   const isSelf = memberUserId === currentUser?.id;
 
   // Tính toán thống kê công việc của thành viên trong dự án hiện tại
   const stats = useMemo(() => {
-    const memberTasks = tasks.filter((t) =>
-      t.assignees?.some((u) => u.id === memberUserId)
+    const memberTasks = (tasks || []).filter((t) =>
+      t.assignees?.some((u) => (u.id || u.userId) === memberUserId)
     );
     const todo = memberTasks.filter((t) => t.status === "TODO").length;
     const inProgress = memberTasks.filter((t) => t.status === "IN_PROGRESS").length;
