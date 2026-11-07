@@ -46,5 +46,15 @@ services:
       # Tự động import file SQL khi khởi tạo container lần đầu
       - ./Task-Management/task_management.sql:/docker-entrypoint-initdb.d/task_management.sql
 
+  redis:
+    image: redis:7-alpine
+    container_name: worksys-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
 volumes:
     mysql_data:
+    redis_data:

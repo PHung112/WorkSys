@@ -58,4 +58,23 @@ public class JwtUtil {
             return false;
         }
     }
+
+    public Date extractExpiration(String token) {
+        return Jwts.parser()
+                .verifyWith(getKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .getExpiration();
+    }
+
+    public long getRemainingExpirationMillis(String token) {
+        try {
+            Date exp = extractExpiration(token);
+            long diff = exp.getTime() - System.currentTimeMillis();
+            return Math.max(diff, 0);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
 }

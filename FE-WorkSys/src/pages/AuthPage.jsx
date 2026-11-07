@@ -8,7 +8,7 @@ export default function AuthPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const tab = searchParams.get("tab") || "login";
-  const { login, register, loading } = useAuth();
+  const { login, register, sendRegisterOtp, verifyAndRegister, loading } = useAuth();
 
   useEffect(() => {
     const token = sessionStorage.getItem("token");
@@ -85,7 +85,11 @@ export default function AuthPage() {
         {tab === "login" ? (
           <LoginForm onLogin={login} loading={loading} />
         ) : (
-          <RegisterForm onRegister={register} loading={loading} />
+          <RegisterForm
+            onSendOtp={sendRegisterOtp}
+            onVerifyAndRegister={verifyAndRegister}
+            loading={loading}
+          />
         )}
       </div>
     </div>

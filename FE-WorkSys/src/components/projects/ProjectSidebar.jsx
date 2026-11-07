@@ -2,8 +2,20 @@ import { useState } from "react";
 
 // Sidebar dự án — hiển thị danh sách project, nút tạo mới.
 // Nhận prop `isOpen` và `onToggle` để ẩn/hiện sidebar với animation trượt.
-export default function ProjectSidebar({ projects, selectedProject, onSelect, showMyTasks, onShowMyTasks, onCreateClick, currentUser, onLogout, isOpen, onToggle }) {
-  const [isProjectListOpen, setIsProjectListOpen] = useState(false);
+export default function ProjectSidebar({ projects, selectedProject, onSelect, showMyTasks, onShowMyTasks, onCreateClick, currentUser, onLogout, isOpen, onToggle, isLoading = false }) {
+  const [isProjectListOpen, setIsProjectListOpen] = useState(() => {
+    const saved = sessionStorage.getItem("projectsPage_isProjectListOpen");
+    return saved !== null ? saved === "true" : true;
+  });
+
+  const handleToggleProjectList = () => {
+    setIsProjectListOpen((prev) => {
+      const next = !prev;
+      sessionStorage.setItem("projectsPage_isProjectListOpen", String(next));
+      return next;
+    });
+  };
+
   return (
     <>
       {/* Sidebar chính — trượt sang trái khi ẩn */}
@@ -24,7 +36,7 @@ export default function ProjectSidebar({ projects, selectedProject, onSelect, sh
 
         <div className="px-2 mt-4 flex flex-col gap-1 flex-1 overflow-hidden">
           <button
-            onClick={() => setIsProjectListOpen(!isProjectListOpen)}
+            onClick={handleToggleProjectList}
             className={`flex-none flex items-center justify-between w-full px-4 py-2.5 rounded-lg transition-all ${isProjectListOpen
               ? "bg-primary/10 text-primary font-semibold"
               : "text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface font-medium"
@@ -39,7 +51,11 @@ export default function ProjectSidebar({ projects, selectedProject, onSelect, sh
 
             <div className="flex items-center gap-1.5">
               <span className={`px-2 py-0.5 rounded text-[10px] font-bold border border-outline-variant/10 ${isProjectListOpen ? "bg-primary/20 text-primary" : "bg-surface-container-high text-on-surface-variant"}`}>
-                {projects.length}
+                {isLoading && projects.length === 0 ? (
+                  <span className="inline-block w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin"></span>
+                ) : (
+                  projects.length
+                )}
               </span>
               <span className={`material-symbols-outlined text-[20px] transition-transform duration-200 ${isProjectListOpen ? "rotate-180" : ""}`}>
                 expand_more
@@ -50,35 +66,42 @@ export default function ProjectSidebar({ projects, selectedProject, onSelect, sh
           {/* Danh sách project (Droplist) chèn VÀO GIỮA 2 menu */}
           <div className={`flex flex-col transition-all duration-300 ease-in-out ${isProjectListOpen ? "shrink opacity-100 min-h-0" : "max-h-0 opacity-0 flex-none overflow-hidden"}`}>
             <nav className="flex flex-col gap-base px-2 overflow-y-auto custom-scrollbar">
-              {projects.map((p) => {
-                const isActive = selectedProject?.id === p.id;
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => {
-                      onSelect(p);
-                    }}
-                    className={`flex flex-col items-start px-4 py-2 rounded-lg transition-all ${isActive
-                      ? "bg-primary/10 text-primary border-l-2 border-primary"
-                      : "text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface border-l-2 border-transparent"
-                      }`}
-                  >
-                    <div className="flex items-center w-full">
-                      <span className="font-label-md text-label-md truncate">{p.name}</span>
-                    </div>
-                    {isActive && p.description && (
-                      <span className="text-label-xs font-label-xs opacity-70 truncate w-full mt-1 text-left">
-                        {p.description}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-              {projects.length === 0 && (
+              {isLoading && projects.length === 0 ? (
+                <div className="flex flex-col gap-2 py-3 px-2">
+                  <div className="h-9 bg-surface-container-high/60 rounded-lg animate-pulse"></div>
+                  <div className="h-9 bg-surface-container-high/40 rounded-lg animate-pulse"></div>
+                  <div className="h-9 bg-surface-container-high/20 rounded-lg animate-pulse"></div>
+                </div>
+              ) : projects.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 opacity-50">
                   <span className="material-symbols-outlined text-[24px] text-on-surface-variant mb-2">inbox</span>
                   <p className="text-center text-on-surface-variant text-label-xs">Chưa có dự án nào</p>
                 </div>
+              ) : (
+                projects.map((p) => {
+                  const isActive = selectedProject?.id === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        onSelect(p);
+                      }}
+                      className={`flex flex-col items-start px-4 py-2 rounded-lg transition-all ${isActive
+                        ? "bg-primary/10 text-primary border-l-2 border-primary"
+                        : "text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface border-l-2 border-transparent"
+                        }`}
+                    >
+                      <div className="flex items-center w-full">
+                        <span className="font-label-md text-label-md truncate">{p.name}</span>
+                      </div>
+                      {isActive && p.description && (
+                        <span className="text-label-xs font-label-xs opacity-70 truncate w-full mt-1 text-left">
+                          {p.description}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })
               )}
             </nav>
           </div>

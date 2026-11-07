@@ -70,6 +70,11 @@ public class Task {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    // Quản lý concurrency bằng Optimistic Locking (chống xung đột khi 2 người cùng kéo/sửa task)
+    @Version
+    @Column(name = "version")
+    private Integer version;
+
     public Task() {
     }
 
@@ -185,5 +190,13 @@ public class Task {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Integer getVersion() {
+        return version;
+    }
+
+    public void setVersion(Integer version) {
+        this.version = version;
     }
 }

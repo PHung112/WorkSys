@@ -3,8 +3,12 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
+  root: import.meta.dirname,
   define: {
     global: 'globalThis',
+  },
+  resolve: {
+    preserveSymlinks: false,
   },
   plugins: [react(), tailwindcss()],
   server: {
@@ -15,5 +19,18 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-charts': ['recharts'],
+          'vendor-dnd': ['@hello-pangea/dnd'],
+          'vendor-realtime': ['@stomp/stompjs', 'sockjs-client'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600,
   },
 })

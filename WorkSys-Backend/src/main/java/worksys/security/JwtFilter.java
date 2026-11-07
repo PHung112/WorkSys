@@ -16,9 +16,11 @@ import java.util.List;
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final TokenBlacklistService tokenBlacklistService;
 
-    public JwtFilter(JwtUtil jwtUtil) {
+    public JwtFilter(JwtUtil jwtUtil, TokenBlacklistService tokenBlacklistService) {
         this.jwtUtil = jwtUtil;
+        this.tokenBlacklistService = tokenBlacklistService;
     }
 
     @Override
@@ -31,6 +33,15 @@ public class JwtFilter extends OncePerRequestFilter {
 
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring(7);
+
+            // Kiểm tra token có nằm trong blacklist (do logout) không
+            if (tokenBlacklistService.isBlacklisted(token)) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"error\": \"Phiên đăng nhập đã kết thúc (Token đã bị thu hồi do Đăng xuất). Vui lòng đăng nhập lại.\"}");
+                return;
+            }
+
             if (jwtUtil.validateToken(token)) {
                 String username = jwtUtil.extractUsername(token);
                 var auth = new UsernamePasswordAuthenticationToken(username, null, List.of());

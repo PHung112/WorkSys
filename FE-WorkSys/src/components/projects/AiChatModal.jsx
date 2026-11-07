@@ -26,12 +26,12 @@ export default function AiChatModal({ isOpen, onClose, projectId }) {
   // Tự cuộn xuống cuối khi có tin nhắn mới
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isLoading]);
 
-  // Focus input khi modal mở
+  // Focus input khi widget mở
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 100);
+      setTimeout(() => inputRef.current?.focus(), 150);
     }
   }, [isOpen]);
 
@@ -79,127 +79,140 @@ export default function AiChatModal({ isOpen, onClose, projectId }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[9999] flex items-end sm:items-center justify-center sm:p-4">
-      <div className="bg-surface-container-high w-full sm:max-w-2xl sm:rounded-2xl flex flex-col border border-outline-variant/20 shadow-2xl"
-        style={{ maxHeight: "90vh" }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-surface-container-highest shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-              <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                magic_button
+    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 w-[360px] sm:w-[380px] max-w-[calc(100vw-2rem)] h-[540px] max-h-[calc(100vh-5rem)] flex flex-col bg-[#1b1924] rounded-2xl shadow-2xl shadow-black/60 border border-white/10 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
+      {/* Header — kiểu Facebook Messenger */}
+      <div className="px-4 py-3 bg-[#231f30]/95 backdrop-blur-md border-b border-white/10 flex items-center justify-between shrink-0 select-none">
+        <div className="flex items-center gap-2.5 min-w-0">
+          {/* Avatar with online status */}
+          <div className="relative w-9 h-9 shrink-0">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-purple-600 via-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md">
+              <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                smart_toy
               </span>
             </div>
-            <div>
-              <h2 className="font-semibold text-on-surface text-sm">Trợ lý AI dự án</h2>
-              <p className="text-on-surface-variant text-xs">Powered by Google Gemini</p>
-            </div>
-            <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 text-[10px] font-semibold tracking-wider">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block"></span>
-              Online
-            </span>
+            {/* Green dot active */}
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-[#231f30]" />
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors"
+
+          <div className="flex flex-col min-w-0">
+            <h2 className="font-semibold text-white text-[13.5px] leading-tight truncate">
+              Trợ lý AI dự án
+            </h2>
+            <p className="text-[11px] text-gray-400 flex items-center gap-1.5 leading-tight mt-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
+              Đang hoạt động
+            </p>
+          </div>
+        </div>
+
+        {/* Nút tắt chat duy nhất theo yêu cầu */}
+        <button
+          onClick={onClose}
+          className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+          title="Đóng đoạn chat"
+        >
+          <span className="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      {/* Messages Area — nền tối Messenger với bong bóng tím / xám */}
+      <div className="flex-1 overflow-y-auto p-3.5 space-y-3 custom-scrollbar bg-gradient-to-b from-[#241e33] via-[#1b1727] to-[#14121d]">
+        {messages.map((msg, idx) => (
+          <div
+            key={idx}
+            className={`flex items-end gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
-            <span className="material-symbols-outlined text-[20px]">close</span>
-          </button>
-        </div>
+            {/* Bot Avatar bên trái */}
+            {msg.role === "ai" && (
+              <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center shrink-0 mb-0.5 shadow-sm">
+                <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  smart_toy
+                </span>
+              </div>
+            )}
 
-        {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 custom-scrollbar">
-          {messages.map((msg, idx) => (
-            <div key={idx} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
-              {/* Avatar */}
-              <div className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-xs font-bold mt-0.5 ${
+            {/* Bubble */}
+            <div
+              className={`text-[13.5px] leading-relaxed max-w-[82%] shadow-sm ${
                 msg.role === "ai"
-                  ? "bg-primary/10 text-primary"
-                  : "bg-surface-container-highest text-on-surface-variant"
-              }`}>
-                {msg.role === "ai"
-                  ? <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>smart_toy</span>
-                  : <span className="material-symbols-outlined text-[14px]">person</span>
-                }
-              </div>
-              {/* Bubble */}
-              <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                msg.role === "ai"
-                  ? "bg-surface-container-low border border-outline-variant/10 text-on-surface rounded-tl-sm"
-                  : "bg-primary/90 text-on-primary rounded-tr-sm"
-              }`}>
-                {msg.role === "ai" ? (
-                  <div className="prose prose-sm prose-invert max-w-none [&>ul]:pl-4 [&>ol]:pl-4 [&>ul>li]:my-0.5 [&>ol>li]:my-0.5 [&>p]:my-1 [&>h1]:text-base [&>h2]:text-base [&>h3]:text-sm [&>strong]:text-on-surface">
-                    <ReactMarkdown>{msg.text}</ReactMarkdown>
-                  </div>
-                ) : (
-                  msg.text
-                )}
-              </div>
-            </div>
-          ))}
-
-          {/* Loading indicator */}
-          {isLoading && (
-            <div className="flex gap-3">
-              <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center bg-primary/10 text-primary mt-0.5">
-                <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>smart_toy</span>
-              </div>
-              <div className="bg-surface-container-low border border-outline-variant/10 rounded-2xl rounded-tl-sm px-4 py-3">
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: "0ms" }}></span>
-                  <span className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: "150ms" }}></span>
-                  <span className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: "300ms" }}></span>
+                  ? "bg-[#2b2738] border border-white/5 text-[#f1f0f5] px-3.5 py-2.5 rounded-[18px] rounded-bl-sm"
+                  : "bg-gradient-to-r from-[#9d6cf8] to-[#8054d4] text-white px-3.5 py-2.5 rounded-[18px] rounded-br-sm break-words whitespace-pre-wrap"
+              }`}
+            >
+              {msg.role === "ai" ? (
+                <div className="prose prose-sm prose-invert max-w-none text-[13.5px] break-words [&>p]:my-1 [&>ul]:pl-4 [&>ol]:pl-4 [&>ul>li]:my-0.5 [&>ol>li]:my-0.5 [&>strong]:text-white [&>code]:bg-black/30 [&>code]:px-1 [&>code]:py-0.5 [&>code]:rounded [&>pre]:bg-black/40 [&>pre]:p-2 [&>pre]:rounded-lg">
+                  <ReactMarkdown>{msg.text}</ReactMarkdown>
                 </div>
-              </div>
+              ) : (
+                msg.text
+              )}
             </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+          </div>
+        ))}
 
-        {/* Quick Prompts */}
-        {messages.length <= 1 && !isLoading && (
-          <div className="px-4 pb-3 flex flex-wrap gap-2 shrink-0">
-            {QUICK_PROMPTS.map((qp) => (
-              <button
-                key={qp.label}
-                onClick={() => sendMessage(qp.prompt)}
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-surface-container border border-outline-variant/20 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest hover:border-primary/30 transition-all"
-              >
-                <span className="material-symbols-outlined text-[13px] text-primary">{qp.icon}</span>
-                {qp.label}
-              </button>
-            ))}
+        {/* Loading indicator (Typing dots Messenger) */}
+        {isLoading && (
+          <div className="flex items-end gap-2">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center shrink-0 mb-0.5 shadow-sm">
+              <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                smart_toy
+              </span>
+            </div>
+            <div className="bg-[#2b2738] border border-white/5 px-3.5 py-2.5 rounded-[18px] rounded-bl-sm flex items-center gap-1.5 shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "0ms" }}></span>
+              <span className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "150ms" }}></span>
+              <span className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "300ms" }}></span>
+            </div>
           </div>
         )}
+        <div ref={messagesEndRef} />
+      </div>
 
-        {/* Input Area */}
-        <div className="px-4 pb-4 shrink-0">
-          <div className="flex items-end gap-2 bg-surface-container border border-outline-variant/20 rounded-xl px-3 py-2 focus-within:border-primary/50 transition-colors">
-            <textarea
-              ref={inputRef}
-              rows={1}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Hỏi về tiến độ, task, thành viên..."
-              className="flex-1 bg-transparent text-on-surface text-sm resize-none outline-none placeholder:text-on-surface-variant/50 max-h-32 custom-scrollbar"
-              style={{ fieldSizing: "content" }}
-              disabled={isLoading}
-            />
+      {/* Quick Prompts (gợi ý nhanh khi chưa chat nhiều) */}
+      {messages.length <= 1 && !isLoading && (
+        <div className="px-3 py-1.5 flex flex-wrap gap-1.5 shrink-0 bg-[#1e192c]/80 border-t border-white/5">
+          {QUICK_PROMPTS.map((qp) => (
             <button
-              onClick={() => sendMessage()}
-              disabled={!input.trim() || isLoading}
-              className="w-8 h-8 rounded-lg bg-primary text-on-primary flex items-center justify-center hover:bg-primary-fixed transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+              key={qp.label}
+              onClick={() => sendMessage(qp.prompt)}
+              className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full bg-[#2d283c] border border-purple-500/20 text-purple-200 hover:text-white hover:bg-purple-900/40 hover:border-purple-400/40 transition-all shadow-sm"
             >
-              <span className="material-symbols-outlined text-[18px]">send</span>
+              <span className="material-symbols-outlined text-[13px] text-purple-400">{qp.icon}</span>
+              {qp.label}
             </button>
-          </div>
-          <p className="text-center text-on-surface-variant/40 text-[10px] mt-1.5">
-            Nhấn Enter để gửi · Shift+Enter để xuống dòng
-          </p>
+          ))}
         </div>
+      )}
+
+      {/* Input Area — thanh nhập Messenger đơn giản chỉ có ô nhập và nút gửi */}
+      <div className="px-3 py-2.5 bg-[#1f1a2c]/95 backdrop-blur-md border-t border-white/10 shrink-0 flex items-center gap-2">
+        <div className="flex-1 flex items-center bg-[#2d283c] rounded-full px-3.5 py-1 border border-white/5 focus-within:border-purple-500/50 transition-all">
+          <textarea
+            ref={inputRef}
+            rows={1}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Aa"
+            className="flex-1 bg-transparent text-[13.5px] text-white placeholder-gray-400/60 outline-none resize-none py-1 max-h-24 custom-scrollbar"
+            style={{ fieldSizing: "content" }}
+            disabled={isLoading}
+          />
+        </div>
+
+        {/* Nút gửi duy nhất theo yêu cầu */}
+        <button
+          onClick={() => sendMessage()}
+          disabled={!input.trim() || isLoading}
+          title="Gửi"
+          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all shrink-0 ${
+            input.trim() && !isLoading
+              ? "bg-[#9d6cf8] text-white hover:bg-[#8d58f3] shadow-md hover:scale-105 active:scale-95"
+              : "text-gray-500 bg-white/5 cursor-not-allowed opacity-40"
+          }`}
+        >
+          <span className="material-symbols-outlined text-[18px]">send</span>
+        </button>
       </div>
     </div>
   );

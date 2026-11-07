@@ -1,6 +1,8 @@
 import { useNavigate } from "react-router-dom";
+import authApi from "../api/authApi";
 import { useState, useRef, useEffect } from "react";
 import NotificationBell from "../components/common/NotificationBell";
+import Logo from "../components/common/Logo";
 
 export default function AppNavbar() {
   const navigate = useNavigate();
@@ -37,10 +39,16 @@ export default function AppNavbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
-    sessionStorage.clear();
-    setIsProfileOpen(false);
-    navigate("/auth");
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+    } catch (err) {
+      console.warn("Backend logout error:", err);
+    } finally {
+      sessionStorage.clear();
+      setIsProfileOpen(false);
+      navigate("/auth");
+    }
   };
 
   const handleMenuClick = (tab) => {
@@ -51,15 +59,7 @@ export default function AppNavbar() {
   return (
     <header className="sticky top-0 w-full z-50 bg-background/60 backdrop-blur-xl border-b border-white/20">
       <div className="h-16 w-full px-10 flex items-center justify-between">
-        <button onClick={() => navigate('/projects')} className="flex items-center gap-3 group cursor-pointer hover:opacity-90 transition-opacity">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-tertiary flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform duration-300">
-            <span className="material-symbols-outlined text-on-primary text-2xl">layers</span>
-          </div>
-          <div className="flex items-baseline gap-1">
-            <span className="font-display font-bold text-2xl tracking-tight text-on-background">WorkSys</span>
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-          </div>
-        </button>
+        <Logo to="/projects" />
 
         <div className="flex items-center gap-4">
           <NotificationBell />
@@ -71,7 +71,18 @@ export default function AppNavbar() {
               >
                 <div className="w-7 h-7 bg-primary/20 rounded-full flex items-center justify-center text-xs font-bold text-primary overflow-hidden shrink-0">
                   {currentUser.avatarUrl ? (
-                    <img src={currentUser.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                    <img
+                      src={currentUser.avatarUrl}
+                      alt="Avatar"
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        if (e.currentTarget.nextSibling) {
+                          e.currentTarget.nextSibling.style.display = 'block';
+                        }
+                      }}
+                    />
                   ) : (
                     currentUser.username?.[0]?.toUpperCase()
                   )}

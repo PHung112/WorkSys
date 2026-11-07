@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Instance dùng chung cho toàn bộ app
 const http = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "https://api.tdphihung.id.vn",
+  baseURL: import.meta.env.VITE_API_URL || "https://worksys.onrender.com",
   headers: { "Content-Type": "application/json" },
 });
 
@@ -15,7 +15,7 @@ http.interceptors.request.use((config) => {
   return config;
 });
 
-// Nếu BE trả 401 (token hết hạn / không hợp lệ) → đẩy về trang login
+// Nếu BE trả 401 (token hết hạn / không hợp lệ) -> đẩy về trang login
 http.interceptors.response.use(
   (response) => response,
   (error) => {

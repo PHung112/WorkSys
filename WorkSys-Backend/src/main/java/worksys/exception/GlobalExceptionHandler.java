@@ -25,6 +25,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
     }
 
+    @ExceptionHandler({
+        jakarta.persistence.OptimisticLockException.class,
+        org.springframework.orm.ObjectOptimisticLockingFailureException.class
+    })
+    public ResponseEntity<Map<String, Object>> handleOptimisticLockException(Exception ex) {
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("timestamp", LocalDateTime.now());
+        errorResponse.put("status", HttpStatus.CONFLICT.value());
+        errorResponse.put("error", "Conflict");
+        errorResponse.put("message", "Công việc này vừa được người khác cập nhật! Vui lòng tải lại trang để thấy dữ liệu mới nhất.");
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+    }
+
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleRuntimeException(RuntimeException ex) {

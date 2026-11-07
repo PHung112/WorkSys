@@ -65,5 +65,41 @@ export function useAuth() {
     }
   };
 
-  return { login, register, loading };
+  const sendRegisterOtp = async ({ username, email }) => {
+    setLoading(true);
+    try {
+      const res = await authApi.sendRegisterOtp({ username, email });
+      return { success: true, message: res.data.message };
+    } catch (err) {
+      return {
+        success: false,
+        error: err.response?.data?.error || "Không thể gửi mã xác thực. Vui lòng thử lại sau.",
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyAndRegister = async ({ username, email, password, otp }) => {
+    setLoading(true);
+    try {
+      const res = await authApi.verifyAndRegister({ username, email, password, otp });
+      saveSession(res.data);
+      if (res.data.systemRole === "SYSTEM_ADMIN") {
+        navigate("/admin");
+      } else {
+        navigate("/projects");
+      }
+      return { success: true };
+    } catch (err) {
+      return {
+        success: false,
+        error: err.response?.data?.error || "Xác thực thất bại. Vui lòng kiểm tra lại mã OTP.",
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { login, register, sendRegisterOtp, verifyAndRegister, loading };
 }

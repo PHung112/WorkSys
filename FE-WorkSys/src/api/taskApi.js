@@ -15,8 +15,8 @@ const taskApi = {
   getTasksByProject: (projectId) => http.get(`/api/tasks/project/${projectId}`),
   getTasksByUser: (userId) => http.get(`/api/tasks/user/${userId}`),
   updateTask: (id, data) => http.put(`/api/tasks/${id}`, data),
-  // Cập nhật trạng thái task khi kéo thả Kanban:
-  updateTaskStatus: (id, status) => http.patch(`/api/tasks/${id}/status`, { status }),
+  // Cập nhật trạng thái task khi kéo thả Kanban (hỗ trợ version cho Optimistic Locking):
+  updateTaskStatus: (id, status, version) => http.patch(`/api/tasks/${id}/status`, { status, version }),
   deleteTask: (id) => http.delete(`/api/tasks/${id}`),
   acceptTask: (taskId, memberId) => http.post(`/api/tasks/${taskId}/accept`, null, { params: { memberId } }),
   // submissionLink: string URL, hoặc file: File object
