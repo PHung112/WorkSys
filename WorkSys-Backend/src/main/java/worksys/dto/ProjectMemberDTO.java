@@ -7,6 +7,7 @@ public class ProjectMemberDTO {
     private String email;
     private String role;
     private String avatarUrl;
+    private String position;
 
     public ProjectMemberDTO() {
     }
@@ -26,6 +27,16 @@ public class ProjectMemberDTO {
         this.email = email;
         this.role = role;
         this.avatarUrl = avatarUrl;
+    }
+
+    public ProjectMemberDTO(Long id, Long userId, String username, String email, String role, String avatarUrl, String position) {
+        this.id = id;
+        this.userId = userId;
+        this.username = username;
+        this.email = email;
+        this.role = role;
+        this.avatarUrl = avatarUrl;
+        this.position = position;
     }
 
     // Getters & Setters
@@ -75,5 +86,13 @@ public class ProjectMemberDTO {
 
     public void setAvatarUrl(String avatarUrl) {
         this.avatarUrl = avatarUrl;
+    }
+
+    public String getPosition() {
+        return position;
+    }
+
+    public void setPosition(String position) {
+        this.position = position;
     }
 }

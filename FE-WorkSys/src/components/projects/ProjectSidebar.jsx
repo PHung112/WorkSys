@@ -2,7 +2,26 @@ import { useState } from "react";
 
 // Sidebar dự án — hiển thị danh sách project, nút tạo mới.
 // Nhận prop `isOpen` và `onToggle` để ẩn/hiện sidebar với animation trượt.
-export default function ProjectSidebar({ projects, selectedProject, onSelect, showMyTasks, onShowMyTasks, onCreateClick, currentUser, onLogout, isOpen, onToggle, isLoading = false }) {
+export default function ProjectSidebar({
+  projects = [],
+  selectedProject,
+  onSelect,
+  onSelectProject,
+  showMyTasks,
+  onShowMyTasks,
+  onOpenMyTasks,
+  onCreateClick,
+  onOpenCreateProject,
+  currentUser,
+  onLogout,
+  isOpen,
+  onToggle,
+  isLoading = false,
+}) {
+  const handleSelect = onSelect || onSelectProject || (() => { });
+  const handleShowMyTasks = onShowMyTasks || onOpenMyTasks || (() => { });
+  const handleCreateClick = onCreateClick || onOpenCreateProject || (() => { });
+
   const [isProjectListOpen, setIsProjectListOpen] = useState(() => {
     const saved = sessionStorage.getItem("projectsPage_isProjectListOpen");
     return saved !== null ? saved === "true" : true;
@@ -84,7 +103,7 @@ export default function ProjectSidebar({ projects, selectedProject, onSelect, sh
                     <button
                       key={p.id}
                       onClick={() => {
-                        onSelect(p);
+                        handleSelect(p);
                       }}
                       className={`flex flex-col items-start px-4 py-2 rounded-lg transition-all ${isActive
                         ? "bg-primary/10 text-primary border-l-2 border-primary"
@@ -108,7 +127,7 @@ export default function ProjectSidebar({ projects, selectedProject, onSelect, sh
 
           <button
             onClick={() => {
-              onShowMyTasks();
+              handleShowMyTasks();
               setIsProjectListOpen(false); // Đóng danh sách dự án nếu đang mở
             }}
             className={`flex-none flex items-center w-full px-4 py-2.5 rounded-lg transition-all ${showMyTasks
@@ -126,7 +145,7 @@ export default function ProjectSidebar({ projects, selectedProject, onSelect, sh
         {/* Footer: nút tạo project mới */}
         <div className="p-2 flex flex-col gap-base border-t border-outline-variant/10 mt-auto">
           <button
-            onClick={onCreateClick}
+            onClick={handleCreateClick}
             className="flex items-center px-4 py-2 rounded-lg text-primary hover:bg-primary/10 transition-all font-label-md text-label-md mb-2"
           >
             <span className="material-symbols-outlined mr-3">add_circle</span>
@@ -138,3 +157,4 @@ export default function ProjectSidebar({ projects, selectedProject, onSelect, sh
     </>
   );
 }
+

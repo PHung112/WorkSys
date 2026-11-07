@@ -191,6 +191,12 @@ export function useProjectMembers(projectId, navigate) {
     setModal("confirmKick");
   }, []);
 
+  const openEditPositionModal = useCallback((member) => {
+    setModalData(member);
+    setFormError("");
+    setModal("editPosition");
+  }, []);
+
   const closeModal = useCallback(() => {
     setModal(null);
     setFormError("");
@@ -222,6 +228,17 @@ export function useProjectMembers(projectId, navigate) {
       setModal(null);
     } catch {
       setFormError("Cập nhật vai trò thất bại.");
+    }
+  };
+
+  const handleUpdatePosition = async (targetUserId, position) => {
+    setFormError("");
+    try {
+      await projectApi.updateMemberPosition(projectId, targetUserId, position);
+      await loadData();
+      closeModal();
+    } catch (err) {
+      setFormError(err?.response?.data?.message || err?.response?.data?.error || "Cập nhật chuyên môn thất bại.");
     }
   };
 
@@ -269,10 +286,12 @@ export function useProjectMembers(projectId, navigate) {
     openEditRoleModal,
     openPromoteModal,
     openKickModal,
+    openEditPositionModal,
     closeModal,
     // Operations
     handleInviteMember,
     handleUpdateRole,
+    handleUpdatePosition,
     handleRemoveMember,
     loadData,
   };

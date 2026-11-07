@@ -2,6 +2,7 @@ import EditProjectModal from "./EditProjectModal";
 import ConfirmDeleteProjectModal from "./ConfirmDeleteProjectModal";
 import InviteMemberModal from "./InviteMemberModal";
 import EditRoleModal from "./EditRoleModal";
+import EditPositionModal from "./EditPositionModal";
 import EditTaskModal from "./EditTaskModal";
 import ConfirmLeaveModal from "./ConfirmLeaveModal";
 import SubmitTaskModal from "./SubmitTaskModal";
@@ -34,6 +35,7 @@ export default function ProjectModals({
   roleForm,
   setRoleForm,
   onUpdateRole,
+  onUpdatePosition,
   transferTarget,
   setTransferTarget,
   onAdminLeave,
@@ -88,6 +90,16 @@ export default function ProjectModals({
           roleForm={roleForm}
           setRoleForm={setRoleForm}
           onSubmit={onUpdateRole}
+          onClose={onClose}
+          formError={formError}
+        />
+      )}
+
+      {modal === "editPosition" && (
+        <EditPositionModal
+          projectId={selectedProject?.id}
+          member={modalData}
+          onSubmit={onUpdatePosition}
           onClose={onClose}
           formError={formError}
         />

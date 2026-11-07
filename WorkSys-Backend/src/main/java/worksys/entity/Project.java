@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 @Entity
 @Table(name = "projects")
@@ -39,6 +42,10 @@ public class Project {
     // ID của Webhook được tạo trên GitHub qua REST API (để hủy/cập nhật tự động)
     @Column(name = "github_webhook_id")
     private Long githubWebhookId;
+
+    // Danh sách chuyên môn tùy biến riêng của từng project (lưu dạng chuỗi phân cách dấu phẩy hoặc JSON)
+    @Column(name = "custom_positions", columnDefinition = "TEXT")
+    private String customPositions;
 
     public Project() {
     }
@@ -114,5 +121,45 @@ public class Project {
 
     public void setGithubWebhookId(Long githubWebhookId) {
         this.githubWebhookId = githubWebhookId;
+    }
+
+    public String getCustomPositions() {
+        return customPositions;
+    }
+
+    public void setCustomPositions(String customPositions) {
+        this.customPositions = customPositions;
+    }
+
+    public List<String> getCustomPositionsList() {
+        if (customPositions == null || customPositions.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        String[] split = customPositions.split(";;;");
+        List<String> list = new ArrayList<>();
+        for (String s : split) {
+            String trimmed = s.trim();
+            if (!trimmed.isEmpty() && !list.contains(trimmed)) {
+                list.add(trimmed);
+            }
+        }
+        return list;
+    }
+
+    public void addCustomPosition(String pos) {
+        if (pos == null || pos.trim().isEmpty()) return;
+        List<String> list = getCustomPositionsList();
+        String trimmed = pos.trim();
+        boolean exists = false;
+        for (String p : list) {
+            if (p.equalsIgnoreCase(trimmed)) {
+                exists = true;
+                break;
+            }
+        }
+        if (!exists) {
+            list.add(trimmed);
+            this.customPositions = String.join(";;;", list);
+        }
     }
 }

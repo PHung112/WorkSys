@@ -16,25 +16,25 @@ public class CustomCacheErrorHandler implements CacheErrorHandler {
 
     @Override
     public void handleCacheGetError(RuntimeException exception, Cache cache, Object key) {
-        log.warn("⚠️ [Redis Resiliency] Không thể lấy cache [{}] với key [{}]. Tự động truy vấn trực tiếp từ Database. Lỗi: {}",
+        log.warn("[Redis Resiliency] Không thể lấy cache [{}] với key [{}]. Tự động truy vấn trực tiếp từ Database. Lỗi: {}",
                 cache != null ? cache.getName() : "unknown", key, exception.getMessage());
     }
 
     @Override
     public void handleCachePutError(RuntimeException exception, Cache cache, Object key, Object value) {
-        log.warn("⚠️ [Redis Resiliency] Không thể ghi cache [{}] với key [{}]. Bỏ qua lưu cache. Lỗi: {}",
+        log.warn("[Redis Resiliency] Không thể ghi cache [{}] với key [{}]. Bỏ qua lưu cache. Lỗi: {}",
                 cache != null ? cache.getName() : "unknown", key, exception.getMessage());
     }
 
     @Override
     public void handleCacheEvictError(RuntimeException exception, Cache cache, Object key) {
-        log.warn("⚠️ [Redis Resiliency] Không thể xóa cache [{}] với key [{}]. Lỗi: {}",
+        log.warn("[Redis Resiliency] Không thể xóa cache [{}] với key [{}]. Lỗi: {}",
                 cache != null ? cache.getName() : "unknown", key, exception.getMessage());
     }
 
     @Override
     public void handleCacheClearError(RuntimeException exception, Cache cache) {
-        log.warn("⚠️ [Redis Resiliency] Không thể dọn dẹp cache [{}]. Lỗi: {}",
+        log.warn("[Redis Resiliency] Không thể dọn dẹp cache [{}]. Lỗi: {}",
                 cache != null ? cache.getName() : "unknown", exception.getMessage());
     }
 }

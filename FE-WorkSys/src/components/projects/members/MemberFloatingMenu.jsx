@@ -10,6 +10,7 @@ export default function MemberFloatingMenu({
   currentUser,
   onViewProfile,
   onEditRole,
+  onEditPosition,
   onPromoteManager,
   onKickMember,
   onClose,
@@ -65,6 +66,22 @@ export default function MemberFloatingMenu({
         >
           <span className="material-symbols-outlined text-[16px] text-amber-400">tune</span>
           <span>Phân quyền</span>
+        </button>
+      )}
+
+      {/* Option 2.5: Điều chỉnh chuyên môn (Dành cho Admin, Manager hoặc chính bản thân) */}
+      {(myRole === "ADMIN" || myRole === "MANAGER" || isSelf) && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+            onEditPosition && onEditPosition(activeMember);
+          }}
+          className="w-full text-left px-3.5 py-2 text-xs text-on-surface hover:bg-surface-container-highest flex items-center gap-2.5 transition-colors cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-[16px] text-purple-400">psychology</span>
+          <span>{isSelf ? "Chỉnh chuyên môn của tôi" : "Điều chỉnh chuyên môn"}</span>
         </button>
       )}
 

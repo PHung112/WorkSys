@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import taskApi from "../../api/taskApi";
 
-export default function MyTasksDetail({ currentUser, onNavigateToProject }) {
+export default function MyTasksDetail({ currentUser, onNavigateToProject, onSelectProject, onBack }) {
+  const navigateToProject = onNavigateToProject || onSelectProject;
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -138,7 +139,7 @@ export default function MyTasksDetail({ currentUser, onNavigateToProject }) {
                     return (
                       <div
                         key={task.id}
-                        onClick={() => onNavigateToProject && onNavigateToProject(group.projectId)}
+                        onClick={() => navigateToProject && navigateToProject(group.projectId)}
                         className={`cursor-pointer p-4 rounded-2xl border ${isOverdue ? 'border-error/30 bg-error/5 hover:border-error/50' : 'border-outline-variant/15 bg-surface-container-lowest hover:border-primary/40 hover:bg-surface-container-low'} shadow-sm transition-all flex flex-col gap-3 group`}
                       >
                         <div className="flex justify-between items-start">

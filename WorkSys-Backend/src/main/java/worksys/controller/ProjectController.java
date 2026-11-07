@@ -10,6 +10,7 @@ import worksys.security.JwtUtil;
 import worksys.service.ProjectService;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/projects")
@@ -144,6 +145,45 @@ public class ProjectController {
             return ResponseEntity.ok(projectService.updateMemberRole(projectId, userId, memberId, request.role));
         } catch (RuntimeException e) {
             return ResponseEntity.status(403).body(e.getMessage());
+        }
+    }
+
+    // Lấy danh sách chuyên môn khả dụng của dự án (mặc định + tùy biến riêng)
+    @GetMapping("/{projectId}/positions")
+    public ResponseEntity<?> getProjectPositions(@PathVariable Long projectId, HttpServletRequest request) {
+        Long userId = getCurrentUserId(request);
+        if (!projectService.isMember(projectId, userId)) {
+            return ResponseEntity.status(403).body("Bạn không có quyền truy cập project này");
+        }
+        return ResponseEntity.ok(projectService.getProjectPositions(projectId));
+    }
+
+    // Thêm chuyên môn mới vào riêng project này
+    @PostMapping("/{projectId}/positions")
+    public ResponseEntity<?> addProjectPosition(@PathVariable Long projectId,
+            @RequestBody Map<String, String> body,
+            HttpServletRequest request) {
+        Long userId = getCurrentUserId(request);
+        String name = body != null ? body.get("name") : null;
+        try {
+            return ResponseEntity.ok(projectService.addProjectPosition(projectId, userId, name));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // Điều chỉnh chuyên môn của thành viên trong dự án
+    @PutMapping("/{projectId}/members/{memberId}/position")
+    public ResponseEntity<?> updateMemberPosition(@PathVariable Long projectId,
+            @PathVariable Long memberId,
+            @RequestBody Map<String, String> body,
+            HttpServletRequest request) {
+        Long userId = getCurrentUserId(request);
+        String position = body != null ? body.get("position") : null;
+        try {
+            return ResponseEntity.ok(projectService.updateMemberPosition(projectId, userId, memberId, position));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
         }
     }
 

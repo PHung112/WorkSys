@@ -476,6 +476,21 @@ export function useProjectsManager(navigate, searchParams, setSearchParams) {
     }
   };
 
+  const handleUpdatePosition = async (targetUserId, position) => {
+    setFormError("");
+    try {
+      await projectApi.updateMemberPosition(
+        selectedProject.id,
+        targetUserId,
+        position
+      );
+      await refreshDetails(selectedProject.id);
+      closeModal();
+    } catch (err) {
+      setFormError(err.response?.data?.message || err.response?.data?.error || "Cập nhật chuyên môn thất bại.");
+    }
+  };
+
   // ── Task handlers ───────────────────────────────────────────────────────────
   const handleCreateTask = async (e) => {
     e.preventDefault();
@@ -684,6 +699,7 @@ export function useProjectsManager(navigate, searchParams, setSearchParams) {
     handleRemoveMember,
     handleAdminLeave,
     handleUpdateRole,
+    handleUpdatePosition,
     handleCreateTask,
     handleEditTask,
     handleDeleteTask,

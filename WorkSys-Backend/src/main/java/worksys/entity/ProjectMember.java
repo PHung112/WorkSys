@@ -21,6 +21,10 @@ public class ProjectMember {
     @Column(nullable = false, length = 20)
     private Role role;
 
+    // Vị trí chuyên môn trong dự án (Frontend Developer, Backend Developer, QA/Tester...)
+    @Column(name = "position", length = 100)
+    private String position;
+
     public ProjectMember() {
     }
 
@@ -55,5 +59,13 @@ public class ProjectMember {
 
     public void setRole(Role role) {
         this.role = role;
+    }
+
+    public String getPosition() {
+        return position;
+    }
+
+    public void setPosition(String position) {
+        this.position = position;
     }
 }

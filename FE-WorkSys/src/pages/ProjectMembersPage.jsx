@@ -10,6 +10,7 @@ import MemberFloatingMenu from "../components/projects/members/MemberFloatingMen
 
 // Modals
 import EditRoleModal from "../components/projects/modals/EditRoleModal";
+import EditPositionModal from "../components/projects/modals/EditPositionModal";
 import InviteMemberModal from "../components/projects/modals/InviteMemberModal";
 import MemberProfileModal from "../components/projects/modals/MemberProfileModal";
 import ConfirmModal from "../components/common/ConfirmModal";
@@ -53,10 +54,12 @@ export default function ProjectMembersPage() {
     openEditRoleModal,
     openPromoteModal,
     openKickModal,
+    openEditPositionModal,
     closeModal,
     // API Actions
     handleInviteMember,
     handleUpdateRole,
+    handleUpdatePosition,
     handleRemoveMember,
   } = useProjectMembers(projectId, navigate);
 
@@ -120,6 +123,7 @@ export default function ProjectMembersPage() {
         currentUser={currentUser}
         onViewProfile={setProfileMember}
         onEditRole={openEditRoleModal}
+        onEditPosition={openEditPositionModal}
         onPromoteManager={openPromoteModal}
         onKickMember={openKickModal}
         onClose={handleCloseMenu}
@@ -144,6 +148,16 @@ export default function ProjectMembersPage() {
           roleForm={roleForm}
           setRoleForm={setRoleForm}
           onSubmit={handleUpdateRole}
+          onClose={closeModal}
+          formError={formError}
+        />
+      )}
+
+      {modal === "editPosition" && (
+        <EditPositionModal
+          projectId={projectId}
+          member={modalData}
+          onSubmit={handleUpdatePosition}
           onClose={closeModal}
           formError={formError}
         />

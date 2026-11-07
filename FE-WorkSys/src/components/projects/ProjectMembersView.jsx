@@ -14,6 +14,7 @@ export default function ProjectMembersView({
   myRole,
   onOpenInviteMember,
   onOpenEditRole,
+  onOpenEditPosition,
   onOpenConfirmKick,
   onOpenProfile,
   onBackToTasks,
@@ -150,6 +151,9 @@ export default function ProjectMembersView({
                   Vai trò
                 </th>
                 <th className="py-3 px-4 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">
+                  Chuyên môn
+                </th>
+                <th className="py-3 px-4 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">
                   Nhiệm vụ được giao
                 </th>
                 <th className="py-3 px-4 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider text-right">
@@ -219,6 +223,20 @@ export default function ProjectMembersView({
                       )}
                     </td>
 
+                    {/* Cột 2.5: Chuyên môn */}
+                    <td className="py-3.5 px-4">
+                      {member.position ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-500/10 text-purple-400 border border-purple-500/20 text-xs font-semibold rounded-full">
+                          <span className="material-symbols-outlined text-[14px]">psychology</span>
+                          {member.position}
+                        </span>
+                      ) : (
+                        <span className="text-on-surface-variant/40 text-xs italic">
+                          Chưa thiết lập
+                        </span>
+                      )}
+                    </td>
+
                     {/* Cột 3: Số task được giao */}
                     <td className="py-3.5 px-4">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-surface-container rounded-lg text-xs font-medium text-on-surface border border-outline-variant/10">
@@ -247,7 +265,7 @@ export default function ProjectMembersView({
 
               {filteredMembers.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="py-12 text-center text-on-surface-variant">
+                  <td colSpan={5} className="py-12 text-center text-on-surface-variant">
                     <div className="flex flex-col items-center justify-center gap-2 opacity-60">
                       <span className="material-symbols-outlined text-[40px]">search_off</span>
                       <p className="text-sm font-medium">Không tìm thấy thành viên nào phù hợp</p>
@@ -269,6 +287,7 @@ export default function ProjectMembersView({
         currentUser={currentUser}
         onViewProfile={onOpenProfile}
         onEditRole={onOpenEditRole}
+        onEditPosition={onOpenEditPosition}
         onPromoteManager={(targetId) => onOpenEditRole(targetId, "MANAGER")}
         onKickMember={onOpenConfirmKick}
         onClose={handleCloseMenu}

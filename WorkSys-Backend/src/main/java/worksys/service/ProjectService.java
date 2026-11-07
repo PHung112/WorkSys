@@ -15,6 +15,8 @@ import worksys.repository.TaskRepository;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Set;
+import java.util.LinkedHashSet;
 import java.util.stream.Collectors;
 
 @Service
@@ -153,7 +155,8 @@ public class ProjectService {
                         pm.getUser().getUsername(),
                         pm.getUser().getEmail(),
                         pm.getRole().name(),
-                        pm.getUser().getAvatarUrl()))
+                        pm.getUser().getAvatarUrl(),
+                        pm.getPosition()))
                 .collect(Collectors.toList());
     }
 
@@ -304,5 +307,81 @@ public class ProjectService {
             repo = repo.substring(0, repo.length() - 1);
         }
         return repo.isBlank() ? null : repo;
+    }
+
+    public static final List<String> DEFAULT_POSITIONS = List.of(
+            "Frontend Developer",
+            "Backend Developer",
+            "Fullstack Developer",
+            "Mobile Developer",
+            "UI/UX Designer",
+            "QA / Tester",
+            "DevOps Engineer",
+            "Business Analyst (BA)",
+            "Project Manager (PM)"
+    );
+
+    // Lấy danh sách chuyên môn khả dụng cho project (Gợi ý mặc định + chuyên môn riêng của project)
+    public List<String> getProjectPositions(Long projectId) {
+        Project project = getProjectById(projectId);
+        Set<String> positions = new LinkedHashSet<>(DEFAULT_POSITIONS);
+        positions.addAll(project.getCustomPositionsList());
+        return new ArrayList<>(positions);
+    }
+
+    // Thêm chuyên môn mới vào riêng project này
+    public List<String> addProjectPosition(Long projectId, Long actorId, String newPosition) {
+        if (!isMember(projectId, actorId)) {
+            throw new RuntimeException("Bạn không phải thành viên của dự án này");
+        }
+        if (newPosition == null || newPosition.trim().isEmpty()) {
+            throw new RuntimeException("Tên chuyên môn không được để trống");
+        }
+        Project project = getProjectById(projectId);
+        project.addCustomPosition(newPosition.trim());
+        Project saved = projectRepository.save(project);
+        cacheEvictionService.evictProjectDetails(projectId);
+        return getProjectPositions(projectId);
+    }
+
+    // Cập nhật chuyên môn cho một thành viên trong project (Admin/Manager hoặc chính thành viên tự chỉnh)
+    public ProjectMemberDTO updateMemberPosition(Long projectId, Long actorId, Long targetUserId, String position) {
+        Role actorRole = getMemberRole(projectId, actorId);
+        boolean isSelf = actorId.equals(targetUserId);
+        if (actorRole != Role.ADMIN && actorRole != Role.MANAGER && !isSelf) {
+            throw new RuntimeException("Bạn không có quyền điều chỉnh chuyên môn của thành viên khác");
+        }
+        Project project = getProjectById(projectId);
+        User targetUser = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        ProjectMember pm = projectMemberRepository.findByProjectAndUser(project, targetUser)
+                .orElseThrow(() -> new RuntimeException("Member not found in this project"));
+
+        String cleanPosition = (position != null && !position.trim().isEmpty()) ? position.trim() : null;
+
+        if (cleanPosition != null) {
+            boolean isDefault = DEFAULT_POSITIONS.stream().anyMatch(p -> p.equalsIgnoreCase(cleanPosition));
+            if (!isDefault) {
+                // Tự động thêm vào danh sách riêng của project nếu chưa có
+                project.addCustomPosition(cleanPosition);
+                projectRepository.save(project);
+            }
+        }
+
+        pm.setPosition(cleanPosition);
+        projectMemberRepository.save(pm);
+
+        cacheEvictionService.evictProjectDetails(projectId);
+        realtimeEventService.publishProjectChanged(project, "MEMBER_UPDATED", actorId);
+
+        return new ProjectMemberDTO(
+                pm.getId(),
+                pm.getUser().getId(),
+                pm.getUser().getUsername(),
+                pm.getUser().getEmail(),
+                pm.getRole().name(),
+                pm.getUser().getAvatarUrl(),
+                pm.getPosition()
+        );
     }
 }

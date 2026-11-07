@@ -21,6 +21,9 @@ export default function MembersTable({
                 Vai trò
               </th>
               <th className="py-3.5 px-5 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">
+                Chuyên môn
+              </th>
+              <th className="py-3.5 px-5 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">
                 Nhiệm vụ được giao
               </th>
               <th className="py-3.5 px-5 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider text-right">
@@ -98,6 +101,20 @@ export default function MembersTable({
                     )}
                   </td>
 
+                  {/* Cột 2.5: Chuyên môn */}
+                  <td className="py-4 px-5">
+                    {member.position ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-500/10 text-purple-400 border border-purple-500/20 text-xs font-semibold rounded-full">
+                        <span className="material-symbols-outlined text-[14px]">psychology</span>
+                        {member.position}
+                      </span>
+                    ) : (
+                      <span className="text-on-surface-variant/40 text-xs italic">
+                        Chưa thiết lập
+                      </span>
+                    )}
+                  </td>
+
                   {/* Cột 3: Nhiệm vụ */}
                   <td className="py-4 px-5">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-surface-container rounded-xl text-xs font-medium text-on-surface border border-outline-variant/10">
@@ -126,7 +143,7 @@ export default function MembersTable({
 
             {members.length === 0 && (
               <tr>
-                <td colSpan={4} className="py-14 text-center text-on-surface-variant">
+                <td colSpan={5} className="py-14 text-center text-on-surface-variant">
                   <div className="flex flex-col items-center justify-center gap-2 opacity-60">
                     <span className="material-symbols-outlined text-[44px]">search_off</span>
                     <p className="text-sm font-medium">Không tìm thấy thành viên nào phù hợp</p>

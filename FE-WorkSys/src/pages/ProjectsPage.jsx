@@ -66,6 +66,7 @@ export default function ProjectsPage() {
     handleRemoveMember,
     handleAdminLeave,
     handleUpdateRole,
+    handleUpdatePosition,
     handleEditTask,
     handleDeleteTask,
     handleAcceptTask,
@@ -83,11 +84,22 @@ export default function ProjectsPage() {
       <ProjectSidebar
         projects={projects}
         selectedProject={selectedProject}
+        onSelect={(p) => selectProject(p, "members", true)}
         onSelectProject={(p) => selectProject(p, "members", true)}
+        onCreateClick={() => {
+          setShowMyTasks(false);
+          setSelectedProject(null);
+          setIsCreatingProject(true);
+        }}
         onOpenCreateProject={() => {
           setShowMyTasks(false);
           setSelectedProject(null);
           setIsCreatingProject(true);
+        }}
+        onShowMyTasks={() => {
+          setSelectedProject(null);
+          setIsCreatingProject(false);
+          setShowMyTasks(true);
         }}
         onOpenMyTasks={() => {
           setSelectedProject(null);
@@ -101,8 +113,8 @@ export default function ProjectsPage() {
         isLoading={isInitialLoadingProjects}
       />
 
-      {/* Main Workspace Content */}
-      <div className="flex-1 flex flex-col min-w-0 h-[calc(100vh-4rem)]">
+      {/* Main Workspace Content - co bóp mượt mà khi mở/đóng sidebar */}
+      <div className={`flex-1 flex flex-col min-w-0 relative h-[calc(100vh-4rem)] transition-all duration-300 ease-in-out ${sidebarOpen ? "pl-72" : "pl-0"}`}>
         <main className="flex-1 flex flex-col overflow-hidden relative">
           {showMyTasks ? (
             <MyTasksDetail
@@ -188,6 +200,7 @@ export default function ProjectsPage() {
                 setRoleForm({ role });
                 openModal("editRole", { userId });
               }}
+              onOpenEditPosition={(member) => openModal("editPosition", member)}
               onOpenCreateTask={() => {
                 navigate(`/projects/${selectedProject.id}/new-task`);
               }}
@@ -239,6 +252,7 @@ export default function ProjectsPage() {
         roleForm={roleForm}
         setRoleForm={setRoleForm}
         onUpdateRole={handleUpdateRole}
+        onUpdatePosition={handleUpdatePosition}
         transferTarget={transferTarget}
         setTransferTarget={setTransferTarget}
         onAdminLeave={handleAdminLeave}

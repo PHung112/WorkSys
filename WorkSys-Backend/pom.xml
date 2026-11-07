@@ -28,6 +28,8 @@
   </scm>
   <properties>
     <java.version>17</java.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
   </properties>
   <dependencies>
     <dependency>
@@ -123,6 +125,7 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <configuration>
+          <encoding>UTF-8</encoding>
           <annotationProcessorPaths>
             <path>
               <groupId>org.projectlombok</groupId>
@@ -135,6 +138,7 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
         <configuration>
+          <jvmArguments>-Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8</jvmArguments>
           <excludes>
             <exclude>
               <groupId>org.projectlombok</groupId>

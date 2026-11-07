@@ -36,6 +36,7 @@ export default function ProjectDetail({
   onOpenInviteMember,
   onOpenConfirmKick,
   onOpenEditRole,
+  onOpenEditPosition,
   onOpenCreateTask,
   onOpenEditTask,
   onOpenConfirmDeleteTask,
@@ -226,6 +227,7 @@ export default function ProjectDetail({
           myRole={myRole}
           onOpenInviteMember={onOpenInviteMember}
           onOpenEditRole={onOpenEditRole}
+          onOpenEditPosition={onOpenEditPosition}
           onOpenConfirmKick={onOpenConfirmKick}
           onOpenProfile={(member) => setProfileMember(member)}
           onBackToTasks={() => setActiveView("kanban")}

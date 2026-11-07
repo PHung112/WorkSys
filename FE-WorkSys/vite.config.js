@@ -2,8 +2,13 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
+// Nếu chạy qua Windows NTFS junction / symlink, đồng bộ process.cwd() với realpath
+// để Vite dependency optimizer không bị lệch đường dẫn
+if (process.cwd() !== import.meta.dirname) {
+  process.chdir(import.meta.dirname)
+}
+
 export default defineConfig({
-  root: import.meta.dirname,
   define: {
     global: 'globalThis',
   },
