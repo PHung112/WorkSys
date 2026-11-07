@@ -1,6 +1,7 @@
 package worksys.service;
 
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -141,8 +142,17 @@ public class TaskService {
     // Cập nhật task - chỉ ADMIN/MANAGER được sửa khi task chưa giao; sau khi đã
     // giao không ai được sửa
     public Task updateTask(Long id, String title, String description, LocalDate deadline) {
+        return updateTask(id, title, description, deadline, null);
+    }
+
+    public Task updateTask(Long id, String title, String description, LocalDate deadline, Integer expectedVersion) {
         Task task = getTaskById(id);
         User currentUser = getCurrentUser();
+
+        // Kiểm tra Optimistic Lock nếu client truyền expectedVersion
+        if (expectedVersion != null && task.getVersion() != null && !task.getVersion().equals(expectedVersion)) {
+            throw new ObjectOptimisticLockingFailureException(Task.class, id);
+        }
 
         // Kiểm tra deadline khi cập nhật: cho phép từ hôm nay trở đi
         if (deadline != null && deadline.isBefore(LocalDate.now())) {
@@ -276,6 +286,10 @@ public class TaskService {
 
     // Cập nhật trạng thái task (Dành cho Admin / Manager kéo thả trực tiếp trên Kanban)
     public Task updateTaskStatus(Long id, TaskStatus newStatus) {
+        return updateTaskStatus(id, newStatus, null);
+    }
+
+    public Task updateTaskStatus(Long id, TaskStatus newStatus, Integer expectedVersion) {
         Task task = getTaskById(id);
         User currentUser = getCurrentUser();
 
@@ -285,6 +299,11 @@ public class TaskService {
                 .orElseThrow(() -> new RuntimeException("Bạn không phải thành viên dự án này"));
         if (pm.getRole() == Role.MEMBER) {
             throw new RuntimeException("Chỉ ADMIN hoặc MANAGER mới có quyền đổi trạng thái task");
+        }
+
+        // Kiểm tra Optimistic Lock nếu client truyền expectedVersion
+        if (expectedVersion != null && task.getVersion() != null && !task.getVersion().equals(expectedVersion)) {
+            throw new ObjectOptimisticLockingFailureException(Task.class, id);
         }
 
         task.setStatus(newStatus);
@@ -321,6 +340,7 @@ public class TaskService {
         dto.setLate(late);
         dto.setAttachmentUrl(task.getAttachmentUrl());
         dto.setCreatedAt(task.getCreatedAt() != null ? task.getCreatedAt().toString() : null);
+        dto.setVersion(task.getVersion());
         // Gắn thông tin archive vào DTO
         dto.setArchived(task.isArchived());
         dto.setArchivedAt(task.getArchivedAt() != null ? task.getArchivedAt().toString() : null);
@@ -369,13 +389,21 @@ public class TaskService {
 
     // Cập nhật task - trả về DTO
     public TaskDTO updateTaskDTO(Long id, String title, String description, LocalDate deadline) {
-        Task task = updateTask(id, title, description, deadline);
+        return updateTaskDTO(id, title, description, deadline, null);
+    }
+
+    public TaskDTO updateTaskDTO(Long id, String title, String description, LocalDate deadline, Integer expectedVersion) {
+        Task task = updateTask(id, title, description, deadline, expectedVersion);
         return convertToDTO(task);
     }
 
     // Cập nhật trạng thái task - trả về DTO
     public TaskDTO updateTaskStatusDTO(Long id, TaskStatus newStatus) {
-        Task task = updateTaskStatus(id, newStatus);
+        return updateTaskStatusDTO(id, newStatus, null);
+    }
+
+    public TaskDTO updateTaskStatusDTO(Long id, TaskStatus newStatus, Integer expectedVersion) {
+        Task task = updateTaskStatus(id, newStatus, expectedVersion);
         return convertToDTO(task);
     }
 

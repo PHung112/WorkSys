@@ -13,6 +13,7 @@ import jakarta.validation.constraints.Size;
 import worksys.entity.User;
 import worksys.repository.UserRepository;
 import worksys.security.JwtUtil;
+import worksys.security.TokenBlacklistService;
 import worksys.service.EmailService;
 import worksys.service.UserService;
 
@@ -32,6 +33,7 @@ public class AuthController {
     private final JwtUtil jwtUtil;
     private final EmailService emailService;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final TokenBlacklistService tokenBlacklistService;
 
     // Fallback in-memory cache nếu Redis tạm thời không khả dụng
     private static final ConcurrentHashMap<String, String> localOtpCache = new ConcurrentHashMap<>();
@@ -41,12 +43,14 @@ public class AuthController {
                           UserRepository userRepository,
                           JwtUtil jwtUtil,
                           EmailService emailService,
-                          RedisTemplate<String, Object> redisTemplate) {
+                          RedisTemplate<String, Object> redisTemplate,
+                          TokenBlacklistService tokenBlacklistService) {
         this.userService = userService;
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
         this.emailService = emailService;
         this.redisTemplate = redisTemplate;
+        this.tokenBlacklistService = tokenBlacklistService;
     }
 
     /**
@@ -209,6 +213,19 @@ public class AuthController {
         } catch (RuntimeException e) {
             return ResponseEntity.status(401).body(Map.of("error", e.getMessage()));
         }
+    }
+
+    /**
+     * Đăng xuất: Nhận token từ Header, đưa vào Redis Blacklist với TTL tương ứng
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            tokenBlacklistService.blacklistToken(token);
+            log.info("User đã đăng xuất, token đã được đưa vào blacklist");
+        }
+        return ResponseEntity.ok(Map.of("message", "Đăng xuất thành công. Token đã bị vô hiệu hóa."));
     }
 
     @PostMapping("/change-password")

@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import authApi from "../api/authApi";
 import { useState, useRef, useEffect } from "react";
 import NotificationBell from "../components/common/NotificationBell";
 import Logo from "../components/common/Logo";
@@ -38,10 +39,16 @@ export default function AppNavbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
-    sessionStorage.clear();
-    setIsProfileOpen(false);
-    navigate("/auth");
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+    } catch (err) {
+      console.warn("Backend logout error:", err);
+    } finally {
+      sessionStorage.clear();
+      setIsProfileOpen(false);
+      navigate("/auth");
+    }
   };
 
   const handleMenuClick = (tab) => {

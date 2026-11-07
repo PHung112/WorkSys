@@ -99,7 +99,9 @@ public class TaskController {
     public TaskDTO updateTask(@PathVariable Long id, @RequestBody UpdateTaskRequest request) {
         LocalDate deadline = parseDeadlineToLocalDate(request.deadline);
         try {
-            return taskService.updateTaskDTO(id, request.title, request.description, deadline);
+            return taskService.updateTaskDTO(id, request.title, request.description, deadline, request.version);
+        } catch (org.springframework.orm.ObjectOptimisticLockingFailureException | jakarta.persistence.OptimisticLockException e) {
+            throw e; // Để GlobalExceptionHandler xử lý và trả về 409 Conflict
         } catch (RuntimeException e) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, e.getMessage());
         }
@@ -110,9 +112,11 @@ public class TaskController {
     public TaskDTO updateTaskStatus(@PathVariable Long id, @RequestBody UpdateStatusRequest request) {
         try {
             worksys.entity.TaskStatus newStatus = worksys.entity.TaskStatus.valueOf(request.status);
-            return taskService.updateTaskStatusDTO(id, newStatus);
+            return taskService.updateTaskStatusDTO(id, newStatus, request.version);
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trạng thái không hợp lệ");
+        } catch (org.springframework.orm.ObjectOptimisticLockingFailureException | jakarta.persistence.OptimisticLockException e) {
+            throw e; // Để GlobalExceptionHandler xử lý và trả về 409 Conflict
         } catch (RuntimeException e) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, e.getMessage());
         }
@@ -212,9 +216,11 @@ public class TaskController {
         public String title;
         public String description;
         public String deadline; // ISO string "yyyy-MM-dd" từ frontend
+        public Integer version; // Version kiểm tra Optimistic Locking
     }
 
     public static class UpdateStatusRequest {
         public String status; // TODO, IN_PROGRESS, SUBMITTED, DONE
+        public Integer version; // Version kiểm tra Optimistic Locking
     }
 }

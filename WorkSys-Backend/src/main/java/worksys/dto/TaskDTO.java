@@ -28,6 +28,7 @@ public class TaskDTO {
     private String archivedAt;
     
     private String createdAt;
+    private Integer version;
 
     public TaskDTO() {
     }
@@ -203,5 +204,13 @@ public class TaskDTO {
 
     public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Integer getVersion() {
+        return version;
+    }
+
+    public void setVersion(Integer version) {
+        this.version = version;
     }
 }

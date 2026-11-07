@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import authApi from "../api/authApi";
 import projectApi from "../api/projectApi";
 import taskApi from "../api/taskApi";
 import userApi from "../api/userApi";
@@ -517,6 +518,7 @@ export function useProjectsManager(navigate, searchParams, setSearchParams) {
         title: taskForm.title,
         description: taskForm.description,
         deadline: taskForm.deadline || null,
+        version: modalData.version,
       });
       await refreshDetails(selectedProject.id);
       closeModal();
@@ -616,10 +618,16 @@ export function useProjectsManager(navigate, searchParams, setSearchParams) {
     }
   };
 
-  const handleLogout = () => {
-    clearProjectsCache();
-    sessionStorage.clear();
-    navigate("/auth");
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+    } catch (err) {
+      console.warn("Backend logout error:", err);
+    } finally {
+      clearProjectsCache();
+      sessionStorage.clear();
+      navigate("/auth");
+    }
   };
 
   const myRole = useMemo(() => {

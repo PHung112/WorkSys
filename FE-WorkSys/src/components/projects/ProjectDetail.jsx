@@ -155,10 +155,18 @@ export default function ProjectDetail({
       const orderedTasks = KANBAN_COLUMNS.flatMap((status) => nextColumns[status]);
       setKanbanTasks(orderedTasks);
 
-      taskApi.updateTaskStatus(updatedTask.id, destination.droppableId).catch((err) => {
-        console.error("Cập nhật trạng thái task thất bại:", err);
-        setKanbanTasks(tasks);
-      });
+      taskApi
+        .updateTaskStatus(updatedTask.id, destination.droppableId, draggedTask.version)
+        .catch((err) => {
+          console.error("Cập nhật trạng thái task thất bại:", err);
+          if (err.response?.status === 409) {
+            alert(
+              err.response?.data?.message ||
+                "Công việc này vừa được người khác cập nhật! Bảng đã được đồng bộ lại trạng thái mới nhất."
+            );
+          }
+          setKanbanTasks(tasks);
+        });
     },
     [tasksByStatus, myRole, tasks]
   );

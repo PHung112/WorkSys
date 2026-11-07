@@ -5,6 +5,7 @@ const authApi = {
   register: (data) => http.post("/api/auth/register", data),
   sendRegisterOtp: (data) => http.post("/api/auth/send-register-otp", data),
   verifyAndRegister: (data) => http.post("/api/auth/verify-and-register", data),
+  logout: () => http.post("/api/auth/logout"),
 };
 
 export default authApi;
