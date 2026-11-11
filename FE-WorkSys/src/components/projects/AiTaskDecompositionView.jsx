@@ -58,8 +58,9 @@ export default function AiTaskDecompositionView({
 
   const loadingMessages = [
     "Đang kết nối với Google Gemini AI...",
+    "Đang truy vấn cấu trúc file & mã nguồn từ GitHub Repo...",
     "Đang phân tích cấu trúc & yêu cầu kỹ thuật...",
-    "Đang phân rã tính năng theo quy trình kỹ thuật tối ưu...",
+    "Đang phân rã tính năng bám sát mã nguồn thực tế...",
     "Đang đối chiếu danh sách thành viên và ước lượng thời gian...",
     "Đang hoàn tất cấu trúc nhiệm vụ...",
   ];

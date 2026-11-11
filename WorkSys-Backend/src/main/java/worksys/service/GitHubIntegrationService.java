@@ -483,4 +483,144 @@ public class GitHubIntegrationService {
             throw new RuntimeException("Không thể hoàn tất đăng nhập GitHub OAuth: " + e.getMessage());
         }
     }
+
+    /**
+     * Đọc cấu trúc cây thư mục (File Tree) và Tech Stack thực tế của Repository từ GitHub REST API
+     * Cung cấp ngữ cảnh mã nguồn chính xác cho Gemini AI phân rã task.
+     */
+    public String getRepositoryStructureContext(String repoFullName, String token) {
+        if (repoFullName == null || repoFullName.isBlank()) {
+            return "Dự án chưa liên kết với GitHub Repository.";
+        }
+
+        // Làm sạch tên repo nếu người dùng lưu cả link https://github.com/owner/repo
+        String cleanRepo = repoFullName.trim();
+        if (cleanRepo.startsWith("https://github.com/")) {
+            cleanRepo = cleanRepo.substring("https://github.com/".length());
+        }
+        if (cleanRepo.endsWith(".git")) {
+            cleanRepo = cleanRepo.substring(0, cleanRepo.length() - 4);
+        }
+        if (cleanRepo.endsWith("/")) {
+            cleanRepo = cleanRepo.substring(0, cleanRepo.length() - 1);
+        }
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            if (token != null && !token.isBlank()) {
+                headers.set("Authorization", "Bearer " + token.trim());
+            }
+            headers.set("Accept", "application/vnd.github+json");
+            headers.set("X-GitHub-Api-Version", "2022-11-28");
+            headers.set("User-Agent", "WorkSys-App/1.0");
+            HttpEntity<Void> request = new HttpEntity<>(headers);
+
+            // 1. Lấy thông tin cơ bản về repo (ngôn ngữ, default branch)
+            String repoUrl = "https://api.github.com/repos/" + cleanRepo;
+            ResponseEntity<String> repoRes = restTemplate.exchange(repoUrl, HttpMethod.GET, request, String.class);
+            JsonNode repoNode = objectMapper.readTree(repoRes.getBody());
+            String defaultBranch = repoNode.path("default_branch").asText("main");
+            String language = repoNode.path("language").asText("Chưa xác định");
+            String description = repoNode.path("description").asText("");
+
+            // 2. Lấy toàn bộ File Tree qua Git Data API (recursive=1)
+            String treeUrl = "https://api.github.com/repos/" + cleanRepo + "/git/trees/" + defaultBranch + "?recursive=1";
+            ResponseEntity<String> treeRes = restTemplate.exchange(treeUrl, HttpMethod.GET, request, String.class);
+            JsonNode treeNode = objectMapper.readTree(treeRes.getBody());
+            JsonNode treeItems = treeNode.path("tree");
+
+            List<String> codeFiles = new ArrayList<>();
+            boolean hasPackageJson = false;
+
+            if (treeItems.isArray()) {
+                for (JsonNode item : treeItems) {
+                    String path = item.path("path").asText();
+                    String type = item.path("type").asText(); // blob = file, tree = folder
+                    if (!"blob".equals(type)) continue;
+
+                    // Lọc bỏ các thư mục và file không cần thiết
+                    if (path.startsWith("node_modules/") || path.startsWith(".git/") ||
+                        path.startsWith("dist/") || path.startsWith("build/") ||
+                        path.startsWith(".next/") || path.endsWith(".png") ||
+                        path.endsWith(".jpg") || path.endsWith(".jpeg") ||
+                        path.endsWith(".pdf") || path.endsWith(".svg") ||
+                        path.endsWith(".ico") || path.endsWith("package-lock.json") ||
+                        path.endsWith("yarn.lock") || path.endsWith("pnpm-lock.yaml")) {
+                        continue;
+                    }
+
+                    if ("package.json".equals(path) || path.endsWith("/package.json")) {
+                        hasPackageJson = true;
+                    }
+
+                    codeFiles.add(path);
+                    if (codeFiles.size() >= 45) { // Giới hạn 45 file quan trọng nhất
+                        break;
+                    }
+                }
+            }
+
+            // 3. Đọc nhanh dependencies từ package.json nếu có
+            String techStackInfo = "";
+            if (hasPackageJson) {
+                try {
+                    HttpHeaders rawHeaders = new HttpHeaders();
+                    if (token != null && !token.isBlank()) {
+                        rawHeaders.set("Authorization", "Bearer " + token.trim());
+                    }
+                    rawHeaders.set("Accept", "application/vnd.github.raw");
+                    rawHeaders.set("User-Agent", "WorkSys-App/1.0");
+                    HttpEntity<Void> rawRequest = new HttpEntity<>(rawHeaders);
+
+                    String pkgUrl = "https://api.github.com/repos/" + cleanRepo + "/contents/package.json";
+                    ResponseEntity<String> pkgRes = restTemplate.exchange(pkgUrl, HttpMethod.GET, rawRequest, String.class);
+                    if (pkgRes.getStatusCode().is2xxSuccessful() && pkgRes.getBody() != null) {
+                        Map<String, Object> pkgMap = objectMapper.readValue(pkgRes.getBody(), Map.class);
+                        if (pkgMap != null) {
+                            List<String> deps = new ArrayList<>();
+                            if (pkgMap.get("dependencies") instanceof Map<?, ?> prodDeps) {
+                                for (Object key : prodDeps.keySet()) {
+                                    deps.add(String.valueOf(key));
+                                }
+                            }
+                            if (pkgMap.get("devDependencies") instanceof Map<?, ?> devDeps) {
+                                for (Object key : devDeps.keySet()) {
+                                    String d = String.valueOf(key);
+                                    if (d.contains("tailwind") || d.contains("vite") || d.contains("eslint") || d.contains("typescript") || d.contains("sass") || d.contains("less")) {
+                                        deps.add(d);
+                                    }
+                                }
+                            }
+                            if (!deps.isEmpty()) {
+                                techStackInfo = String.join(", ", deps);
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    log.debug("Không đọc được raw package.json: {}", e.getMessage());
+                }
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.append(String.format("KHO MÃ NGUỒN THỰC TẾ TRÊN GITHUB (%s):\n", cleanRepo));
+            sb.append(String.format("- Ngôn ngữ chính: %s\n", language));
+            sb.append(String.format("- Nhánh mặc định: %s\n", defaultBranch));
+            if (!description.isBlank()) {
+                sb.append(String.format("- Mô tả Repo: %s\n", description));
+            }
+            if (!techStackInfo.isBlank()) {
+                sb.append(String.format("- Công nghệ & Thư viện (Dependencies) phát hiện: %s\n", techStackInfo));
+            }
+            sb.append("- Cấu trúc các file và component thực tế trong dự án:\n");
+            for (String file : codeFiles) {
+                sb.append(String.format("  * %s\n", file));
+            }
+
+            return sb.toString();
+
+        } catch (Exception e) {
+            log.warn("Không thể lấy cấu trúc file từ GitHub cho {}: {}", cleanRepo, e.getMessage());
+            return String.format("Dự án liên kết với Repo GitHub: %s (Không thể truy vấn cây file: %s)", cleanRepo, e.getMessage());
+        }
+    }
 }

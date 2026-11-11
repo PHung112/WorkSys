@@ -45,14 +45,20 @@ public class AiService {
     private final TaskRepository taskRepository;
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final worksys.repository.UserRepository userRepository;
+    private final GitHubIntegrationService gitHubIntegrationService;
     private final RestTemplate restTemplate;
 
     public AiService(TaskRepository taskRepository,
                      ProjectRepository projectRepository,
-                     ProjectMemberRepository projectMemberRepository) {
+                     ProjectMemberRepository projectMemberRepository,
+                     worksys.repository.UserRepository userRepository,
+                     GitHubIntegrationService gitHubIntegrationService) {
         this.taskRepository = taskRepository;
         this.projectRepository = projectRepository;
         this.projectMemberRepository = projectMemberRepository;
+        this.userRepository = userRepository;
+        this.gitHubIntegrationService = gitHubIntegrationService;
         this.restTemplate = new RestTemplate();
     }
 
@@ -122,6 +128,10 @@ public class AiService {
      * - Đầu ra: Danh sách AiGeneratedSubTaskDTO sẵn sàng để Frontend preview & chỉnh sửa
      */
     public List<AiGeneratedSubTaskDTO> decomposeFeature(Long projectId, AiTaskDecomposeRequestDTO requestDTO) {
+        return decomposeFeature(projectId, requestDTO, null);
+    }
+
+    public List<AiGeneratedSubTaskDTO> decomposeFeature(Long projectId, AiTaskDecomposeRequestDTO requestDTO, Long currentUserId) {
         // 1. Kiểm tra dự án hợp lệ
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Dự án không tồn tại với ID: " + projectId));
@@ -145,26 +155,46 @@ public class AiService {
                 ? requestDTO.getTargetDeadline().trim()
                 : today.plusDays(14).toString();
 
-        String repoInfo = (project.getGithubRepo() != null && !project.getGithubRepo().isBlank())
-                ? project.getGithubRepo()
-                : "Chưa kết nối GitHub";
         String projectDesc = (project.getDescription() != null && !project.getDescription().isBlank())
                 ? project.getDescription()
                 : "Không có mô tả";
 
-        // 3. Xây dựng Prompt kỹ thuật linh hoạt theo ngữ cảnh dự án (Scope & Context-aware)
+        // Lấy Token GitHub của user hiện tại hoặc admin/creator dự án
+        String userGithubToken = null;
+        if (currentUserId != null) {
+            worksys.entity.User currentUser = userRepository.findById(currentUserId).orElse(null);
+            if (currentUser != null && currentUser.getGithubAccessToken() != null && !currentUser.getGithubAccessToken().isBlank()) {
+                userGithubToken = currentUser.getGithubAccessToken();
+            }
+        }
+        if (userGithubToken == null && project.getCreatedBy() != null) {
+            userGithubToken = project.getCreatedBy().getGithubAccessToken();
+        }
+
+        // Đọc cấu trúc cây thư mục (File Tree) và Tech Stack thực tế từ GitHub API
+        String repoContext = "";
+        if (project.getGithubRepo() != null && !project.getGithubRepo().isBlank()) {
+            repoContext = gitHubIntegrationService.getRepositoryStructureContext(project.getGithubRepo(), userGithubToken);
+        } else {
+            repoContext = "Dự án hiện chưa liên kết với GitHub Repository.";
+        }
+
+        // 3. Xây dựng Prompt kỹ thuật linh hoạt theo ngữ cảnh dự án & mã nguồn thực tế
         String prompt = String.format(
                 """
                 Bạn là một Tech Lead / Software Architect thực chiến, thực tế và sắc bén.
-                Nhiệm vụ: Phân tích mục tiêu hoặc yêu cầu công việc dưới đây và phân rã thành các nhiệm vụ con (Sub-tasks) kỹ thuật THỰC TẾ, CHÍNH XÁC, KHÔNG VẼ VỜI THỪA THÃI.
+                Nhiệm vụ: Phân tích mục tiêu hoặc yêu cầu công việc dưới đây và phân rã thành các nhiệm vụ con (Sub-tasks) kỹ thuật THỰC TẾ, BÁM SÁT MÃ NGUỒN CỦA DỰ ÁN, TUYỆT ĐỐI KHÔNG VẼ VỜI THỪA THÃI.
 
                 THÔNG TIN DỰ ÁN:
                 - Tên dự án: %s
                 - Mô tả dự án: %s
-                - Kho mã nguồn GitHub liên kết: %s
                 - Ngày hôm nay: %s
                 - Hạn chót mong muốn: %s
-                - Danh sách thành viên trong team:
+
+                CẤU TRÚC MÃ NGUỒN & THƯ VIỆN THỰC TẾ TRONG GITHUB REPOSITORY:
+                %s
+
+                DANH SÁCH THÀNH VIÊN TRONG TEAM:
                 %s
 
                 MỤC TIÊU / CÔNG VIỆC CẦN PHÂN RÃ:
@@ -173,22 +203,23 @@ public class AiService {
                 YÊU CẦU BỔ SUNG (NẾU CÓ):
                 %s
 
-                QUY TẮC PHÂN TÍCH PHẠM VI (QUAN TRỌNG NHẤT):
-                1. ĐÁNH GIÁ ĐÚNG BẢN CHẤT DỰ ÁN VÀ REPO:
-                   - Nếu dự án là trang tĩnh, Portfolio, Landing page, blog cá nhân (ví dụ repo có tên 'portfolio', 'landing-page', 'ui', 'frontend' hoặc chỉ là web giới thiệu cá nhân): TUYỆT ĐỐI KHÔNG tự bịa ra CSDL (Database/PostgreSQL/MySQL), KHÔNG tạo REST API Backend phức tạp nếu người dùng không yêu cầu có CMS hay database.
-                   - Chỉ tạo task Backend/CSDL khi mục tiêu hoặc dự án thực sự là hệ thống Fullstack hoặc người dùng yêu cầu rõ ràng.
-                2. TƯƠNG XỨNG ĐỘ PHỨC TẠP:
-                   - Với công việc nhỏ, chỉnh sửa đơn giản (ví dụ: đổi tiêu đề web, chỉnh màu, cập nhật text, sửa responsive, thay icon/ảnh): Chỉ cần tạo từ 1 đến 2 sub-tasks ngắn gọn, thực tế. TUYỆT ĐỐI KHÔNG chia nhỏ thành 5-6 task cồng kềnh.
+                QUY TẮC BẮT BUỘC KHI PHÂN RÃ:
+                1. BÁM SÁT CẤU TRÚC CODE VÀ THƯ VIỆN THỰC TẾ TRONG REPO Ở TRÊN:
+                   - Hãy nhìn kỹ danh sách file, component và công nghệ đã phát hiện trong repo.
+                   - Khi mô tả nhiệm vụ con (Sub-task) hoặc đặt tiêu đề, HÃY CHỈ ĐÍNH DANH các file, component thực tế có trong repo cần mở ra để sửa hoặc tạo mới (ví dụ: 'Chỉnh sửa tiêu đề trong index.html hoặc src/components/TopNavBar.jsx, src/components/OverviewSection.jsx').
+                   - Nếu dự án là trang tĩnh, Portfolio, UI thuần (chỉ có HTML/CSS/JS/React/Vite) và KHÔNG có backend: TUYỆT ĐỐI KHÔNG tự bịa ra CSDL (Database/PostgreSQL/MySQL), KHÔNG tạo REST API Backend nếu người dùng không yêu cầu.
+                2. TƯƠNG XỨNG VỚI ĐỘ LỚN:
+                   - Với công việc nhỏ, chỉnh sửa đơn giản (ví dụ: đổi tiêu đề web, chỉnh màu, cập nhật text, sửa responsive, thay icon/ảnh): CHỈ CẦN TẠO TỪ 1 ĐẾN 2 SUB-TASKS ngắn gọn, thực tế. TUYỆT ĐỐI KHÔNG chia nhỏ thành 4-6 task cồng kềnh.
                    - Với tính năng lớn (ví dụ: Cổng thanh toán, Chat realtime, 2FA, Hệ thống phân quyền): Mới cần phân rã từ 3 đến 5 sub-tasks theo các bước kỹ thuật tương ứng.
-                3. PHÂN CÔNG THÔNG MINH:
-                   - Dựa vào Vị trí/Chuyên môn (Frontend, Backend, Fullstack, UI/UX, QA...) của thành viên trong danh sách để gán 'suggestedAssigneeId' phù hợp. Nếu task chỉ là Frontend, ưu tiên giao cho thành viên Frontend/UI.
+                3. PHÂN CÔNG THÔNG MINH THEO CHUYÊN MÔN:
+                   - Dựa vào Vị trí/Chuyên môn (Frontend, Backend, Fullstack, UI/UX...) của từng thành viên trong danh sách để gán 'suggestedAssigneeId' phù hợp nhất.
 
                 QUY TẮC ĐỊNH DẠNG ĐẦU RA (TUÂN THỦ 100%%):
                 - Chỉ trả về DUY NHẤT một chuỗi JSON Array thuần túy. TUYỆT ĐỐI KHÔNG thêm bất kỳ câu chào, giải thích, markdown nào ngoài JSON.
                 - Cấu trúc từng phần tử:
                 [
                   {
-                    "title": "Tiêu đề nhiệm vụ con ngắn gọn, thực tế (tiếng Việt)",
+                    "title": "Tiêu đề nhiệm vụ con ngắn gọn, thực tế, nêu rõ component/file nếu có (tiếng Việt)",
                     "description": "Mô tả cụ thể file/thành phần cần sửa hoặc thao tác kỹ thuật cần thực hiện và tiêu chí nghiệm thu",
                     "priority": "HIGH", // chỉ chọn 1 trong: HIGH, MEDIUM, LOW
                     "estimatedDays": 1, // số ngày ước tính (số nguyên từ 1 đến 7)
@@ -200,9 +231,9 @@ public class AiService {
                 """,
                 project.getName(),
                 projectDesc,
-                repoInfo,
                 today,
                 targetDeadline,
+                repoContext,
                 memberContext,
                 requestDTO.getFeatureGoal(),
                 requestDTO.getAdditionalRequirements() != null ? requestDTO.getAdditionalRequirements() : "Không có yêu cầu thêm",

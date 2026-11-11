@@ -119,7 +119,7 @@ public class AiController {
         }
 
         try {
-            List<AiGeneratedSubTaskDTO> subTasks = aiService.decomposeFeature(projectId, requestDTO);
+            List<AiGeneratedSubTaskDTO> subTasks = aiService.decomposeFeature(projectId, requestDTO, userId);
             return ResponseEntity.ok(subTasks);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of("message", e.getMessage()));
