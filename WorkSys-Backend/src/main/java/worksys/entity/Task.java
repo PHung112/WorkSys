@@ -58,6 +58,10 @@ public class Task {
     @Column(name = "submitted_at")
     private LocalDateTime submittedAt;
 
+    // Thời điểm task hoàn thành (chuyển sang DONE)
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
     // Đánh dấu task đã được chuyển vào kho lưu trữ (archive)
     @Column(nullable = false)
     private boolean archived = false;
@@ -74,6 +78,20 @@ public class Task {
     @Version
     @Column(name = "version")
     private Integer version;
+
+    @PrePersist
+    public void onPrePersist() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+    }
+
+    @PreUpdate
+    public void onPreUpdate() {
+        if (this.status == TaskStatus.DONE && this.completedAt == null) {
+            this.completedAt = LocalDateTime.now();
+        }
+    }
 
     public Task() {
     }
@@ -165,6 +183,14 @@ public class Task {
 
     public void setSubmittedAt(LocalDateTime submittedAt) {
         this.submittedAt = submittedAt;
+    }
+
+    public LocalDateTime getCompletedAt() {
+        return completedAt;
+    }
+
+    public void setCompletedAt(LocalDateTime completedAt) {
+        this.completedAt = completedAt;
     }
 
     // Getter/Setter cho archived và archivedAt

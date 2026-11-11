@@ -267,6 +267,7 @@ public class GitHubWebhookService {
         task.setStatus(TaskStatus.DONE);
         task.setSubmissionLink(linkUrl);
         task.setSubmittedAt(LocalDateTime.now());
+        task.setCompletedAt(LocalDateTime.now());
         Task saved = taskRepository.save(task);
 
         Project project = saved.getProject();

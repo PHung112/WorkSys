@@ -1,6 +1,10 @@
 package worksys.service;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+import java.util.Optional;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -33,6 +37,9 @@ public class TaskService {
     private final RealtimeEventService realtimeEventService;
     private final CacheEvictionService cacheEvictionService;
 
+    @Value("${app.tasks.auto-archive-days:7}")
+    private int autoArchiveDays = 7;
+
     public TaskService(TaskRepository taskRepository, ProjectRepository projectRepository,
             UserRepository userRepository, ProjectMemberRepository projectMemberRepository,
             NotificationService notificationService,
@@ -47,11 +54,39 @@ public class TaskService {
         this.cacheEvictionService = cacheEvictionService;
     }
 
-    // Lấy current user từ JWT SecurityContext
+    // Lấy current user từ JWT SecurityContext (hỗ trợ userId từ auth details, username, email không phân biệt hoa thường)
     private User getCurrentUser() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Authenticated user not found"));
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equalsIgnoreCase(String.valueOf(auth.getName()))) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Bạn chưa đăng nhập hoặc phiên làm việc đã hết hạn");
+        }
+
+        // 1. Thử lấy nhanh và chính xác nhất theo userId được gắn trong auth details từ JwtFilter
+        if (auth.getDetails() instanceof Long userId) {
+            Optional<User> byId = userRepository.findById(userId);
+            if (byId.isPresent()) return byId.get();
+        }
+
+        String principal = String.valueOf(auth.getName()).trim();
+
+        // 2. Thử tìm theo Username (chính xác hoặc không phân biệt hoa thường)
+        Optional<User> userOpt = userRepository.findByUsername(principal)
+                .or(() -> userRepository.findByUsernameIgnoreCase(principal));
+        if (userOpt.isPresent()) return userOpt.get();
+
+        // 3. Thử tìm theo Email (chính xác hoặc không phân biệt hoa thường)
+        userOpt = userRepository.findByEmail(principal)
+                .or(() -> userRepository.findByEmailIgnoreCase(principal));
+        if (userOpt.isPresent()) return userOpt.get();
+
+        // 4. Thử parse ID nếu principal là dạng số
+        try {
+            Long userId = Long.parseLong(principal);
+            userOpt = userRepository.findById(userId);
+            if (userOpt.isPresent()) return userOpt.get();
+        } catch (NumberFormatException ignored) {}
+
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Không tìm thấy thông tin tài khoản: " + principal);
     }
 
     // Tạo task mới (hỗ trợ đính kèm file/tài liệu mô tả chi tiết nhiệm vụ)
@@ -121,6 +156,7 @@ public class TaskService {
     public List<Task> getTasksByProject(Long projectId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
+        autoArchiveTasksForProject(project);
         return taskRepository.findByProjectAndArchivedFalse(project);
     }
 
@@ -128,6 +164,7 @@ public class TaskService {
     public List<TaskDTO> getArchivedTasksByProjectDTO(Long projectId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
+        autoArchiveTasksForProject(project);
         return taskRepository.findByProjectAndArchivedTrue(project).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -306,6 +343,21 @@ public class TaskService {
             throw new ObjectOptimisticLockingFailureException(Task.class, id);
         }
 
+        // Đảm bảo version không bao giờ null khi lưu
+        if (task.getVersion() == null) {
+            task.setVersion(0);
+        }
+
+        if (newStatus == TaskStatus.DONE) {
+            if (task.getCompletedAt() == null) {
+                task.setCompletedAt(LocalDateTime.now());
+            }
+        } else {
+            task.setCompletedAt(null);
+            task.setArchived(false);
+            task.setArchivedAt(null);
+        }
+
         task.setStatus(newStatus);
         Task saved = taskRepository.save(task);
         cacheEvictionService.evictProjectAnalytics(saved.getProject().getId());
@@ -337,6 +389,7 @@ public class TaskService {
                 acceptedUserIds,
                 task.getSubmissionLink());
         dto.setSubmittedAt(task.getSubmittedAt() != null ? task.getSubmittedAt().toString() : null);
+        dto.setCompletedAt(task.getCompletedAt() != null ? task.getCompletedAt().toString() : null);
         dto.setLate(late);
         dto.setAttachmentUrl(task.getAttachmentUrl());
         dto.setCreatedAt(task.getCreatedAt() != null ? task.getCreatedAt().toString() : null);
@@ -425,24 +478,41 @@ public class TaskService {
         return convertToDTO(task);
     }
 
-    // Tự động archive các task DONE sau 7 ngày
+    // Tự động archive các task DONE sau số ngày quy định (mặc định 7 ngày)
+    @Transactional
     public void autoArchiveTasks() {
-        LocalDateTime cutoff = LocalDateTime.now().minusDays(7);
-        
-        // 1. Task có submittedAt (Member nộp)
-        List<Task> tasksWithSubmit = taskRepository.findDoneTasksToArchive(cutoff);
-        // 2. Task không có submittedAt (Admin mark done trực tiếp), dùng deadline làm mốc
-        List<Task> tasksWithoutSubmit = taskRepository.findDoneTasksWithoutSubmitToArchive(cutoff);
-        
-        java.util.Set<Task> tasksToArchive = new java.util.HashSet<>();
-        tasksToArchive.addAll(tasksWithSubmit);
-        tasksToArchive.addAll(tasksWithoutSubmit);
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(autoArchiveDays);
+        LocalDate cutoffDate = cutoff.toLocalDate();
+        List<Task> tasksToArchive = taskRepository.findDoneTasksToArchive(cutoff, cutoffDate);
+        if (tasksToArchive.isEmpty()) return;
 
         for (Task t : tasksToArchive) {
+            if (t.getVersion() == null) {
+                t.setVersion(0);
+            }
             t.setArchived(true);
             t.setArchivedAt(LocalDateTime.now());
-            // Trạng thái lưu tên task [ trạng thái ] theo yêu cầu, có thể lưu vào db nếu cần 
-            // nhưng thực tế FE có thể render theo dạng "Tên Task [DONE]" dựa vào status.
+            taskRepository.save(t);
+            cacheEvictionService.evictProjectAnalytics(t.getProject().getId());
+            realtimeEventService.publishProjectChanged(t.getProject(), "TASK_ARCHIVED", null);
+        }
+    }
+
+    // Tự động archive các task DONE của 1 project cụ thể (khi load project hoặc kho lưu trữ)
+    @Transactional
+    public void autoArchiveTasksForProject(Project project) {
+        if (project == null) return;
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(autoArchiveDays);
+        LocalDate cutoffDate = cutoff.toLocalDate();
+        List<Task> tasksToArchive = taskRepository.findDoneTasksToArchiveByProject(project, cutoff, cutoffDate);
+        if (tasksToArchive.isEmpty()) return;
+
+        for (Task t : tasksToArchive) {
+            if (t.getVersion() == null) {
+                t.setVersion(0);
+            }
+            t.setArchived(true);
+            t.setArchivedAt(LocalDateTime.now());
             taskRepository.save(t);
             cacheEvictionService.evictProjectAnalytics(t.getProject().getId());
             realtimeEventService.publishProjectChanged(t.getProject(), "TASK_ARCHIVED", null);

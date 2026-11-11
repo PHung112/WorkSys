@@ -110,15 +110,22 @@ public class TaskController {
     // Cập nhật trạng thái task (Dành cho Admin / Manager kéo thả Kanban)
     @PatchMapping("/{id}/status")
     public TaskDTO updateTaskStatus(@PathVariable Long id, @RequestBody UpdateStatusRequest request) {
+        if (request == null || request.status == null || request.status.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trạng thái không được để trống");
+        }
+        worksys.entity.TaskStatus newStatus;
         try {
-            worksys.entity.TaskStatus newStatus = worksys.entity.TaskStatus.valueOf(request.status);
-            return taskService.updateTaskStatusDTO(id, newStatus, request.version);
+            newStatus = worksys.entity.TaskStatus.valueOf(request.status.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trạng thái không hợp lệ");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trạng thái không hợp lệ: " + request.status);
+        }
+
+        try {
+            return taskService.updateTaskStatusDTO(id, newStatus, request.version);
         } catch (org.springframework.orm.ObjectOptimisticLockingFailureException | jakarta.persistence.OptimisticLockException e) {
             throw e; // Để GlobalExceptionHandler xử lý và trả về 409 Conflict
         } catch (RuntimeException e) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, e.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
     }
 

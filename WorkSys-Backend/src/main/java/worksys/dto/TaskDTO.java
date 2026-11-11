@@ -21,6 +21,7 @@ public class TaskDTO {
     // Link hoặc file nộp task
     private String submissionLink;
     private String submittedAt; // ISO datetime khi nộp
+    private String completedAt; // ISO datetime khi hoàn thành (DONE)
     private boolean late; // nộp muộn hơn deadline
 
     // Archive
@@ -182,6 +183,14 @@ public class TaskDTO {
     public void setLate(boolean late) {
         this.late = late;
     }
+    public String getCompletedAt() {
+        return completedAt;
+    }
+
+    public void setCompletedAt(String completedAt) {
+        this.completedAt = completedAt;
+    }
+
     public boolean isArchived() {
         return archived;
     }

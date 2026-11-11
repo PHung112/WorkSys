@@ -34,9 +34,8 @@ export function useAuth() {
       }
       return { success: true };
     } catch (err) {
-      return { success: false, error: err.response?.data?.error || "Đăng nhập thất bại." };
-    } finally {
       setLoading(false);
+      return { success: false, error: err.response?.data?.error || "Đăng nhập thất bại." };
     }
   };
 
@@ -52,6 +51,7 @@ export function useAuth() {
       }
       return { success: true };
     } catch (err) {
+      setLoading(false);
       const data = err.response?.data;
       if (data?.message && typeof data.message === "object") {
         return { success: false, fieldErrors: data.message };
@@ -60,8 +60,6 @@ export function useAuth() {
         success: false,
         error: data?.error || "Đăng ký thất bại. Username hoặc email có thể đã tồn tại.",
       };
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -92,12 +90,11 @@ export function useAuth() {
       }
       return { success: true };
     } catch (err) {
+      setLoading(false);
       return {
         success: false,
         error: err.response?.data?.error || "Xác thực thất bại. Vui lòng kiểm tra lại mã OTP.",
       };
-    } finally {
-      setLoading(false);
     }
   };
 

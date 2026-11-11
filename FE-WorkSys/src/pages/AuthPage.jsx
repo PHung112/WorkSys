@@ -92,6 +92,25 @@ export default function AuthPage() {
           />
         )}
       </div>
+
+      {/* Modal Loading Transition khi đang đăng nhập/đăng ký */}
+      {loading && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-md flex flex-col items-center justify-center animate-fadeIn p-4">
+          <div className="bg-surface-container-high border border-outline-variant/30 rounded-2xl p-8 flex flex-col items-center gap-4 shadow-2xl max-w-sm w-full text-center">
+            <div className="relative">
+              <div className="animate-spin w-12 h-12 border-3 border-primary border-t-transparent rounded-full"></div>
+            </div>
+            <div>
+              <h3 className="font-display text-base font-bold text-on-surface">
+                {tab === "login" ? "Đang đăng nhập vào WorkSys..." : "Đang xử lý thông tin..."}
+              </h3>
+              <p className="text-xs text-on-surface-variant mt-1.5 leading-relaxed">
+                Đang thiết lập phiên làm việc và chuẩn bị dữ liệu dự án. Vui lòng đợi trong giây lát.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

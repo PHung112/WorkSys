@@ -38,6 +38,8 @@ public class AdminService {
 
     private User requireSystemAdmin(String username) {
         User user = userRepository.findByUsername(username)
+                .or(() -> userRepository.findByUsernameIgnoreCase(username))
+                .or(() -> userRepository.findByEmailIgnoreCase(username))
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
         if (user.getSystemRole() != SystemRole.SYSTEM_ADMIN) {
             throw new AccessDeniedException("Quyền truy cập bị từ chối: Cần quyền SYSTEM_ADMIN");

@@ -3,6 +3,10 @@ import githubApi from "../../api/githubApi";
 import projectApi from "../../api/projectApi";
 import { inputCls, labelCls, btnPrimary } from "../common/formStyles";
 
+// In-memory cache để tránh giật lag UI / render flash "Chưa kết nối" khi chuyển qua lại các Tab
+let cachedUserStatus = null;
+let cachedRepos = null;
+
 /**
  * Sub-View Tích hợp GitHub: Hỗ trợ KẾT NỐI 1-CLICK (Tự động tạo Webhook qua GitHub API)
  * và Cấu hình thủ công (Manual Fallback).
@@ -16,11 +20,11 @@ export default function GitHubIntegrationView({
   const [activeMode, setActiveMode] = useState("1click");
 
   // Trạng thái tài khoản GitHub của người dùng hiện tại
-  const [userStatus, setUserStatus] = useState(null);
-  const [loadingStatus, setLoadingStatus] = useState(true);
+  const [userStatus, setUserStatus] = useState(cachedUserStatus);
+  const [loadingStatus, setLoadingStatus] = useState(!cachedUserStatus);
 
   // Danh sách repositories lấy từ GitHub
-  const [repos, setRepos] = useState([]);
+  const [repos, setRepos] = useState(cachedRepos || []);
   const [loadingRepos, setLoadingRepos] = useState(false);
   const [repoSearch, setRepoSearch] = useState("");
   const [selectedRepo, setSelectedRepo] = useState("");
@@ -51,37 +55,19 @@ export default function GitHubIntegrationView({
   // Thông báo phản hồi
   const [feedback, setFeedback] = useState(null); // { type: 'success' | 'error', text: '' }
 
-  // 1. Tải trạng thái tài khoản GitHub của user
-  const fetchUserStatus = async () => {
-    setLoadingStatus(true);
-    try {
-      const res = await githubApi.getStatus();
-      setUserStatus(res.data);
-      if (res.data.defaultWebhookBaseUrl) {
-        setWebhookBaseUrl(res.data.defaultWebhookBaseUrl);
-        setCustomTunnelUrl(res.data.defaultWebhookBaseUrl);
-      }
-      if (res.data.connected) {
-        fetchRepos();
-      }
-    } catch (err) {
-      console.error("Lỗi lấy trạng thái GitHub:", err);
-    } finally {
-      setLoadingStatus(false);
-    }
-  };
-
-  // 2. Tải danh sách Repositories
+  // 1. Tải danh sách Repositories
   const fetchRepos = async () => {
     setLoadingRepos(true);
     try {
       const res = await githubApi.getRepos();
-      setRepos(res.data || []);
+      const repoList = res.data || [];
+      setRepos(repoList);
+      cachedRepos = repoList;
 
       // Tự động chọn repo nếu tên trùng hoặc gần giống tên dự án
-      if (selectedProject?.name && res.data?.length > 0) {
+      if (selectedProject?.name && repoList.length > 0) {
         const pName = selectedProject.name.toLowerCase().trim();
-        const matched = res.data.find(
+        const matched = repoList.find(
           (r) =>
             r.name.toLowerCase() === pName ||
             r.name.toLowerCase().includes(pName) ||
@@ -89,14 +75,37 @@ export default function GitHubIntegrationView({
         );
         if (matched) {
           setSelectedRepo(matched.fullName);
-        } else if (res.data[0]) {
-          setSelectedRepo(res.data[0].fullName);
+        } else if (repoList[0]) {
+          setSelectedRepo(repoList[0].fullName);
         }
       }
     } catch (err) {
       console.error("Lỗi lấy repositories:", err);
     } finally {
       setLoadingRepos(false);
+    }
+  };
+
+  // 2. Tải trạng thái tài khoản GitHub của user
+  const fetchUserStatus = async (forceLoading = false) => {
+    if (!cachedUserStatus || forceLoading) {
+      setLoadingStatus(true);
+    }
+    try {
+      const res = await githubApi.getStatus();
+      setUserStatus(res.data);
+      cachedUserStatus = res.data;
+      if (res.data.defaultWebhookBaseUrl) {
+        setWebhookBaseUrl(res.data.defaultWebhookBaseUrl);
+        setCustomTunnelUrl(res.data.defaultWebhookBaseUrl);
+      }
+      if (res.data.connected) {
+        await fetchRepos();
+      }
+    } catch (err) {
+      console.error("Lỗi lấy trạng thái GitHub:", err);
+    } finally {
+      setLoadingStatus(false);
     }
   };
 
@@ -150,7 +159,9 @@ export default function GitHubIntegrationView({
     if (!window.confirm("Bạn có chắc chắn muốn ngắt kết nối tài khoản GitHub khỏi hệ thống?")) return;
     try {
       await githubApi.disconnectUser();
-      setUserStatus((prev) => ({ ...prev, connected: false, username: null }));
+      cachedUserStatus = null;
+      cachedRepos = null;
+      setUserStatus({ connected: false, username: null });
       setRepos([]);
       setFeedback({ type: "success", text: "Đã ngắt kết nối tài khoản GitHub." });
     } catch (err) {
@@ -266,6 +277,18 @@ export default function GitHubIntegrationView({
   };
 
   const manualWebhookUrl = `${customTunnelUrl.trim().replace(/\/+$/, "") || "http://localhost:8080"}/api/webhooks/github`;
+
+  if (loadingStatus) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center w-full h-full min-h-[420px] px-container-margin py-16">
+        <div className="flex flex-col items-center gap-3 bg-surface-container-low border border-outline-variant/20 rounded-2xl p-8 shadow-sm">
+          <div className="animate-spin w-10 h-10 border-3 border-primary border-t-transparent rounded-full"></div>
+          <p className="text-on-surface font-semibold text-sm">Đang tải cấu hình GitHub Webhook...</p>
+          <p className="text-on-surface-variant text-xs">Vui lòng chờ trong giây lát</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col w-full h-full px-container-margin overflow-y-auto custom-scrollbar pb-12">
