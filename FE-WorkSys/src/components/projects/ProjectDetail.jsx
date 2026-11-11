@@ -44,6 +44,7 @@ export default function ProjectDetail({
   onOpenSubmitTask,
   onOpenDownloadConfirm,
   onUnsubmitTask,
+  onTaskStatusUpdated,
 }) {
   const [activeView, setActiveView] = useState("kanban");
   const [kanbanTasks, setKanbanTasks] = useState(tasks);
@@ -144,7 +145,14 @@ export default function ProjectDetail({
       if (draggedIndex < 0) return;
 
       const [draggedTask] = sourceTasks.splice(draggedIndex, 1);
-      const updatedTask = { ...draggedTask, status: destination.droppableId };
+      const nextVersion = (draggedTask.version ?? 0) + 1;
+      const updatedTask = {
+        ...draggedTask,
+        status: destination.droppableId,
+        version: nextVersion,
+        completedAt: destination.droppableId === "DONE" ? new Date().toISOString() : null,
+        archived: false,
+      };
       destinationTasks.splice(destination.index, 0, updatedTask);
 
       const nextColumns = {
@@ -154,10 +162,27 @@ export default function ProjectDetail({
       };
 
       const orderedTasks = KANBAN_COLUMNS.flatMap((status) => nextColumns[status]);
+      // 1. Cập nhật Optimistic UI tức thì trên Kanban và đồng bộ lên parent state
       setKanbanTasks(orderedTasks);
+      if (onTaskStatusUpdated) {
+        onTaskStatusUpdated(updatedTask.id, destination.droppableId, updatedTask);
+      }
 
+      // 2. Gửi request cập nhật trạng thái với version của task
       taskApi
         .updateTaskStatus(updatedTask.id, destination.droppableId, draggedTask.version)
+        .then((res) => {
+          const serverTask = res.data;
+          if (serverTask) {
+            // Cập nhật version chính xác nhất từ DB vào local và parent
+            setKanbanTasks((prev) =>
+              prev.map((t) => (t.id === serverTask.id ? { ...t, ...serverTask } : t))
+            );
+            if (onTaskStatusUpdated) {
+              onTaskStatusUpdated(serverTask.id, serverTask.status, serverTask);
+            }
+          }
+        })
         .catch((err) => {
           console.error("Cập nhật trạng thái task thất bại:", err);
           const errorMsg =
@@ -173,10 +198,14 @@ export default function ProjectDetail({
           } else {
             alert(errorMsg);
           }
+          // Rollback lại trạng thái ban đầu nếu lỗi
           setKanbanTasks(tasks);
+          if (onTaskStatusUpdated && draggedTask) {
+            onTaskStatusUpdated(draggedTask.id, draggedTask.status, draggedTask);
+          }
         });
     },
-    [tasksByStatus, myRole, tasks]
+    [tasksByStatus, myRole, tasks, onTaskStatusUpdated]
   );
 
   const openDrawer = (task) => {

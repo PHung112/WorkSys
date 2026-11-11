@@ -69,6 +69,7 @@ export default function ProjectsPage() {
     handleUpdatePosition,
     handleEditTask,
     handleDeleteTask,
+    handleTaskStatusUpdated,
     handleAcceptTask,
     handleDoSubmitTask,
     handleUnsubmitTask,
@@ -228,6 +229,7 @@ export default function ProjectsPage() {
                 openModal("confirmDownload", { submissionLink: link, title })
               }
               onUnsubmitTask={handleUnsubmitTask}
+              onTaskStatusUpdated={handleTaskStatusUpdated}
             />
           )}
         </main>

@@ -329,7 +329,13 @@ export function useProjectsManager(navigate, searchParams, setSearchParams) {
 
     const unsubscribe = subscribeRealtime(
       `/topic/projects/${selectedProject.id}`,
-      () => {
+      (event) => {
+        // Bỏ qua nếu sự kiện do chính người dùng hiện tại thực hiện
+        // (để tránh race-condition tự reload đè dữ liệu cũ làm giật task khi kéo thả liên tục)
+        if (event && Number(event.actorUserId) === Number(currentUser?.id)) {
+          return;
+        }
+
         clearTimeout(realtimeRefreshRef.current);
         realtimeRefreshRef.current = setTimeout(async () => {
           await refreshDetails(selectedProject.id);
@@ -342,7 +348,7 @@ export function useProjectsManager(navigate, searchParams, setSearchParams) {
       clearTimeout(realtimeRefreshRef.current);
       unsubscribe();
     };
-  }, [selectedProject?.id, refreshDetails, loadProjects]);
+  }, [selectedProject?.id, refreshDetails, loadProjects, currentUser?.id]);
 
   // Mở modal
   const openModal = (name, data = {}) => {
@@ -582,6 +588,29 @@ export function useProjectsManager(navigate, searchParams, setSearchParams) {
     }
   };
 
+  // Cập nhật trạng thái task ngay lập tức khi kéo thả Kanban (Optimistic UI)
+  const handleTaskStatusUpdated = useCallback(
+    (taskId, newStatus, updatedData = {}) => {
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId ? { ...t, status: newStatus, ...updatedData } : t
+        )
+      );
+
+      if (selectedProject?.id) {
+        const cached = getCachedProjectDetails(selectedProject.id);
+        if (cached && cached.tasks) {
+          setCachedProjectDetails(selectedProject.id, {
+            tasks: cached.tasks.map((t) =>
+              t.id === taskId ? { ...t, status: newStatus, ...updatedData } : t
+            ),
+          });
+        }
+      }
+    },
+    [selectedProject?.id]
+  );
+
   const handleAcceptTask = async (taskId) => {
     try {
       await taskApi.acceptTask(taskId, currentUser.id);
@@ -733,6 +762,7 @@ export function useProjectsManager(navigate, searchParams, setSearchParams) {
     handleCreateTask,
     handleEditTask,
     handleDeleteTask,
+    handleTaskStatusUpdated,
     handleAcceptTask,
     handleDoSubmitTask,
     handleUnsubmitTask,
