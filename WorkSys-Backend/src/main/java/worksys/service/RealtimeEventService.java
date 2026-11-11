@@ -27,11 +27,16 @@ public class RealtimeEventService {
         messagingTemplate.convertAndSend((String) ("/topic/users/" + userId + "/notifications"), (Object) event);
     }
 
-    public void publishProjectListChanged(Long userId, Long projectId, String reason) {
+    public void publishProjectListChanged(Long userId, Long projectId, String reason, Long actorUserId) {
         Map<String, Object> event = baseEvent("PROJECT_LIST_CHANGED");
         event.put("projectId", projectId);
         event.put("reason", reason);
+        event.put("actorUserId", actorUserId);
         messagingTemplate.convertAndSend((String) ("/topic/users/" + userId + "/projects"), (Object) event);
+    }
+
+    public void publishProjectListChanged(Long userId, Long projectId, String reason) {
+        publishProjectListChanged(userId, projectId, reason, null);
     }
 
     public void publishProjectChanged(Project project, String eventType, Long actorUserId) {
@@ -46,10 +51,15 @@ public class RealtimeEventService {
 
         messagingTemplate.convertAndSend((String) ("/topic/projects/" + project.getId()), (Object) event);
 
-        projectMemberRepository.findByProject(project).forEach(pm -> {
-            Long memberId = pm.getUser().getId();
-            publishProjectListChanged(memberId, project.getId(), eventType);
-        });
+        // Chỉ gửi PROJECT_LIST_CHANGED tới user khi có thay đổi liên quan tới danh sách project hoặc vai trò/thành viên
+        if ("PROJECT_CREATED".equals(eventType) || "PROJECT_UPDATED".equals(eventType)
+                || "PROJECT_DELETED".equals(eventType) || "MEMBER_JOINED".equals(eventType)
+                || "MEMBER_ROLE_UPDATED".equals(eventType) || "MEMBER_REMOVED".equals(eventType)) {
+            projectMemberRepository.findByProject(project).forEach(pm -> {
+                Long memberId = pm.getUser().getId();
+                publishProjectListChanged(memberId, project.getId(), eventType, actorUserId);
+            });
+        }
     }
 
     private Map<String, Object> baseEvent(String type) {

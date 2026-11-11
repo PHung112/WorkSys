@@ -2,6 +2,7 @@ package worksys.security;
 
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -10,11 +11,17 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Service quản lý giới hạn tần suất gọi API (Rate Limiting) sử dụng Bucket4j (Token Bucket Algorithm)
- * - General APIs: Tối đa 60 requests/phút trên mỗi Client/IP/User
- * - Auth APIs: Tối đa 10 requests/phút chống Brute-force mật khẩu và spam đăng ký
+ * - General APIs: Mặc định 180 requests/phút trên mỗi Client/IP/User (chống nghẽn khi F5/chuyển trang nhanh)
+ * - Auth APIs: Mặc định 20 requests/phút chống Brute-force mật khẩu và spam đăng ký
  */
 @Service
 public class RateLimitingService {
+
+    @Value("${rate.limit.general:180}")
+    private long generalCapacity;
+
+    @Value("${rate.limit.auth:20}")
+    private long authCapacity;
 
     // Cache in-memory lưu trữ token bucket theo từng client key
     private final Map<String, Bucket> generalBuckets = new ConcurrentHashMap<>();
@@ -30,16 +37,16 @@ public class RateLimitingService {
 
     private Bucket createGeneralBucket() {
         Bandwidth limit = Bandwidth.builder()
-                .capacity(60)
-                .refillGreedy(60, Duration.ofMinutes(1))
+                .capacity(generalCapacity)
+                .refillGreedy(generalCapacity, Duration.ofMinutes(1))
                 .build();
         return Bucket.builder().addLimit(limit).build();
     }
 
     private Bucket createAuthBucket() {
         Bandwidth limit = Bandwidth.builder()
-                .capacity(10)
-                .refillGreedy(10, Duration.ofMinutes(1))
+                .capacity(authCapacity)
+                .refillGreedy(authCapacity, Duration.ofMinutes(1))
                 .build();
         return Bucket.builder().addLimit(limit).build();
     }

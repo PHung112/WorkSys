@@ -299,6 +299,19 @@ export function useProjectsManager(navigate, searchParams, setSearchParams) {
     const unsubscribe = subscribeRealtime(
       `/topic/users/${currentUser.id}/projects`,
       async (event) => {
+        // Bỏ qua nếu sự kiện do chính người dùng hiện tại thực hiện
+        if (event?.actorUserId && Number(event.actorUserId) === Number(currentUser?.id)) {
+          return;
+        }
+
+        // Bỏ qua nếu là sự kiện task (các sự kiện task bên trong project đã do /topic/projects/{id} xử lý)
+        if (
+          event?.reason?.startsWith("TASK_") ||
+          event?.type?.startsWith("TASK_")
+        ) {
+          return;
+        }
+
         const refreshedProjects = await loadProjects();
         if (!selectedProject) return;
 
@@ -314,8 +327,16 @@ export function useProjectsManager(navigate, searchParams, setSearchParams) {
         }
 
         const changedProjectId = Number(event?.projectId);
-        if (!changedProjectId || changedProjectId === selectedProject.id) {
-          await refreshDetails(selectedProject.id);
+        if (changedProjectId && changedProjectId === selectedProject.id) {
+          // Chỉ reload chi tiết khi có thay đổi liên quan thông tin dự án hoặc phân quyền/thành viên
+          if (
+            event?.reason === "PROJECT_UPDATED" ||
+            event?.reason === "MEMBER_JOINED" ||
+            event?.reason === "MEMBER_ROLE_UPDATED" ||
+            event?.reason === "MEMBER_REMOVED"
+          ) {
+            await refreshDetails(selectedProject.id);
+          }
         }
       }
     );
@@ -590,7 +611,17 @@ export function useProjectsManager(navigate, searchParams, setSearchParams) {
 
   // Cập nhật trạng thái task ngay lập tức khi kéo thả Kanban (Optimistic UI)
   const handleTaskStatusUpdated = useCallback(
-    (taskId, newStatus, updatedData = {}) => {
+    (taskId, newStatus, updatedData = {}, orderedTasks = null) => {
+      if (orderedTasks && Array.isArray(orderedTasks)) {
+        setTasks(orderedTasks);
+        if (selectedProject?.id) {
+          setCachedProjectDetails(selectedProject.id, {
+            tasks: orderedTasks,
+          });
+        }
+        return;
+      }
+
       setTasks((prev) =>
         prev.map((t) =>
           t.id === taskId ? { ...t, status: newStatus, ...updatedData } : t

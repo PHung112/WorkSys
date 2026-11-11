@@ -54,6 +54,7 @@ export default function ProjectDetail({
   const [assigneesModalTask, setAssigneesModalTask] = useState(null);
   const [profileMember, setProfileMember] = useState(null);
   const menuRef = useRef(null);
+  const taskRequestQueueRef = useRef({});
 
   useEffect(() => {
     setKanbanTasks(tasks);
@@ -127,6 +128,86 @@ export default function ProjectDetail({
     return { total, completed, overdue, progress };
   }, [kanbanTasks, tasksByStatus]);
 
+  // Thực thi cập nhật trạng thái với hàng đợi per-task chống race-condition khi kéo thả liên tục
+  const executeStatusUpdate = useCallback(
+    (taskId, status, version, originalTask) => {
+      taskRequestQueueRef.current[taskId] = taskRequestQueueRef.current[taskId] || {
+        inFlight: false,
+        nextStatus: null,
+      };
+      const queue = taskRequestQueueRef.current[taskId];
+
+      if (queue.inFlight) {
+        // Đang có request gửi đi cho task này -> Đưa status mới nhất vào hàng đợi
+        queue.nextStatus = status;
+        return;
+      }
+
+      queue.inFlight = true;
+      queue.targetStatus = status;
+
+      taskApi
+        .updateTaskStatus(taskId, status, version)
+        .then((res) => {
+          const serverTask = res.data;
+          const currentQueue = taskRequestQueueRef.current[taskId];
+          if (currentQueue) {
+            currentQueue.inFlight = false;
+          }
+
+          if (serverTask) {
+            // Cập nhật version chính xác nhất từ DB vào local và parent
+            setKanbanTasks((prev) =>
+              prev.map((t) => (t.id === serverTask.id ? { ...t, ...serverTask } : t))
+            );
+            if (onTaskStatusUpdated) {
+              onTaskStatusUpdated(serverTask.id, serverTask.status, serverTask);
+            }
+          }
+
+          // Nếu trong lúc chờ server phản hồi, người dùng đã kéo task này sang cột khác tiếp theo:
+          if (currentQueue && currentQueue.nextStatus && currentQueue.nextStatus !== serverTask?.status) {
+            const next = currentQueue.nextStatus;
+            currentQueue.nextStatus = null;
+            executeStatusUpdate(taskId, next, serverTask?.version, originalTask);
+          } else if (currentQueue) {
+            currentQueue.nextStatus = null;
+          }
+        })
+        .catch((err) => {
+          const currentQueue = taskRequestQueueRef.current[taskId];
+          if (currentQueue) {
+            currentQueue.inFlight = false;
+            currentQueue.nextStatus = null;
+          }
+          console.error("Cập nhật trạng thái task thất bại:", err);
+          const errorMsg =
+            err.response?.data?.message ||
+            err.response?.data?.error ||
+            err.message ||
+            "Không thể cập nhật trạng thái công việc";
+          if (err.response?.status === 409) {
+            alert(
+              err.response?.data?.message ||
+              "Công việc này vừa được người khác cập nhật! Bảng đã được đồng bộ lại trạng thái mới nhất."
+            );
+          } else {
+            alert(errorMsg);
+          }
+          // Chỉ rollback đúng task bị lỗi thay vì rollback toàn bộ bảng
+          if (originalTask) {
+            setKanbanTasks((prev) =>
+              prev.map((t) => (t.id === originalTask.id ? { ...t, ...originalTask } : t))
+            );
+            if (onTaskStatusUpdated) {
+              onTaskStatusUpdated(originalTask.id, originalTask.status, originalTask);
+            }
+          }
+        });
+    },
+    [onTaskStatusUpdated]
+  );
+
   // Xử lý kéo thả task trên Kanban
   const handleDragEnd = useCallback(
     (result) => {
@@ -162,50 +243,16 @@ export default function ProjectDetail({
       };
 
       const orderedTasks = KANBAN_COLUMNS.flatMap((status) => nextColumns[status]);
-      // 1. Cập nhật Optimistic UI tức thì trên Kanban và đồng bộ lên parent state
+      // 1. Cập nhật Optimistic UI tức thì trên Kanban và đồng bộ lên parent state kèm orderedTasks
       setKanbanTasks(orderedTasks);
       if (onTaskStatusUpdated) {
-        onTaskStatusUpdated(updatedTask.id, destination.droppableId, updatedTask);
+        onTaskStatusUpdated(updatedTask.id, destination.droppableId, updatedTask, orderedTasks);
       }
 
-      // 2. Gửi request cập nhật trạng thái với version của task
-      taskApi
-        .updateTaskStatus(updatedTask.id, destination.droppableId, draggedTask.version)
-        .then((res) => {
-          const serverTask = res.data;
-          if (serverTask) {
-            // Cập nhật version chính xác nhất từ DB vào local và parent
-            setKanbanTasks((prev) =>
-              prev.map((t) => (t.id === serverTask.id ? { ...t, ...serverTask } : t))
-            );
-            if (onTaskStatusUpdated) {
-              onTaskStatusUpdated(serverTask.id, serverTask.status, serverTask);
-            }
-          }
-        })
-        .catch((err) => {
-          console.error("Cập nhật trạng thái task thất bại:", err);
-          const errorMsg =
-            err.response?.data?.message ||
-            err.response?.data?.error ||
-            err.message ||
-            "Không thể cập nhật trạng thái công việc";
-          if (err.response?.status === 409) {
-            alert(
-              err.response?.data?.message ||
-              "Công việc này vừa được người khác cập nhật! Bảng đã được đồng bộ lại trạng thái mới nhất."
-            );
-          } else {
-            alert(errorMsg);
-          }
-          // Rollback lại trạng thái ban đầu nếu lỗi
-          setKanbanTasks(tasks);
-          if (onTaskStatusUpdated && draggedTask) {
-            onTaskStatusUpdated(draggedTask.id, draggedTask.status, draggedTask);
-          }
-        });
+      // 2. Gửi request cập nhật trạng thái với version của task thông qua queue per-task
+      executeStatusUpdate(updatedTask.id, destination.droppableId, draggedTask.version, draggedTask);
     },
-    [tasksByStatus, myRole, tasks, onTaskStatusUpdated]
+    [tasksByStatus, myRole, onTaskStatusUpdated, executeStatusUpdate]
   );
 
   const openDrawer = (task) => {
@@ -219,7 +266,7 @@ export default function ProjectDetail({
   };
 
   return (
-    <div className="flex flex-col w-full h-full pb-stack-lg relative overflow-hidden bg-background">
+    <div className="flex flex-col w-full h-full pb-2 relative overflow-hidden bg-background">
       {isLoading && (
         <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center rounded-2xl z-50">
           <div className="flex flex-col items-center gap-3">

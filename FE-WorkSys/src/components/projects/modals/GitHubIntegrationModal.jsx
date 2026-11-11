@@ -11,7 +11,7 @@ export default function GitHubIntegrationModal({
 }) {
   const [githubRepo, setGithubRepo] = useState("");
   const [githubSecret, setGithubSecret] = useState("");
-  const [ngrokBaseUrl, setNgrokBaseUrl] = useState("http://localhost:8080");
+  const [ngrokBaseUrl, setNgrokBaseUrl] = useState(import.meta.env.VITE_API_URL || "http://localhost:8080");
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);

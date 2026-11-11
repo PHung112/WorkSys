@@ -20,59 +20,48 @@ export default function KanbanBoard({
 }) {
   return (
     <>
-      {/* Analytics Bar — Click để mở trang báo cáo chi tiết */}
+      {/* Analytics Bar — Click để mở trang báo cáo chi tiết (Thiết kế tinh gọn tiết kiệm chiều cao) */}
       <div
         onClick={onViewAnalytics}
-        className="px-container-margin mb-stack-lg shrink-0 cursor-pointer group"
+        className="px-container-margin mb-2.5 shrink-0 cursor-pointer group"
         title="Nhấp để xem báo cáo phân tích chi tiết dự án"
       >
-        <div className="bg-surface-container-low group-hover:bg-surface-container rounded-2xl p-stack-md flex flex-col md:flex-row gap-stack-lg items-center justify-between border border-outline-variant/10 group-hover:border-primary/40 transition shadow-sm">
-          <div className="flex items-center gap-stack-lg w-full md:w-auto shrink-0">
-            <div className="flex flex-col">
-              <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider mb-1">
-                Tổng nhiệm vụ
-              </span>
-              <span className="font-display text-3xl font-bold text-on-background">
-                {stats.total}
-              </span>
+        <div className="bg-surface-container-low group-hover:bg-surface-container rounded-xl px-4 py-2 flex flex-col sm:flex-row gap-3 items-center justify-between border border-outline-variant/10 group-hover:border-primary/40 transition-all shadow-sm">
+          {/* Cụm số liệu nhanh */}
+          <div className="flex items-center gap-4 text-xs shrink-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-on-surface-variant font-medium text-[11px] uppercase tracking-wider">Nhiệm vụ:</span>
+              <span className="font-bold text-sm text-on-background">{stats.total}</span>
             </div>
-            <div className="w-px h-8 bg-surface-container-highest hidden md:block"></div>
-            <div className="flex flex-col">
-              <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider mb-1">
-                Hoàn thành
-              </span>
-              <span className="font-display text-3xl font-bold text-primary">
-                {stats.completed}
-              </span>
+            <span className="text-outline-variant/30">•</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-on-surface-variant font-medium text-[11px] uppercase tracking-wider">Hoàn thành:</span>
+              <span className="font-bold text-sm text-primary">{stats.completed}</span>
             </div>
-            <div className="w-px h-8 bg-surface-container-highest hidden md:block"></div>
-            <div className="flex flex-col">
-              <span className="font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider mb-1">
-                Quá hạn
-              </span>
-              <span className="font-display text-3xl font-bold text-error">
-                {stats.overdue}
-              </span>
+            <span className="text-outline-variant/30">•</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-on-surface-variant font-medium text-[11px] uppercase tracking-wider">Quá hạn:</span>
+              <span className="font-bold text-sm text-error">{stats.overdue}</span>
             </div>
           </div>
-          <div className="w-full md:max-w-md flex flex-col gap-2">
-            <div className="flex justify-between items-end">
-              <div className="flex items-center gap-1.5">
-                <span className="font-label-md text-label-md text-on-surface">Tiến trình dự án</span>
-                <span className="material-symbols-outlined text-[16px] text-on-surface-variant group-hover:text-primary transition-colors">
-                  trending_up
-                </span>
-              </div>
-              <span className="font-label-md text-label-md text-primary font-bold">
-                {stats.progress}%
+
+          {/* Cụm thanh tiến trình mỏng tinh tế */}
+          <div className="w-full sm:w-64 flex items-center gap-2.5">
+            <span className="text-[11px] text-on-surface-variant font-medium shrink-0 flex items-center gap-1">
+              <span>Tiến trình</span>
+              <span className="material-symbols-outlined text-[13px] text-on-surface-variant group-hover:text-primary transition-colors">
+                trending_up
               </span>
-            </div>
-            <div className="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+            </span>
+            <div className="h-1.5 flex-1 bg-surface-container-highest rounded-full overflow-hidden">
               <div
                 className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
                 style={{ width: `${stats.progress}%` }}
               ></div>
             </div>
+            <span className="text-xs text-primary font-bold shrink-0">
+              {stats.progress}%
+            </span>
           </div>
         </div>
       </div>

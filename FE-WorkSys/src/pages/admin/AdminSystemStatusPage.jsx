@@ -123,7 +123,8 @@ export default function AdminSystemStatusPage() {
 
     // 6. WebSocket / Notifications - just check if SockJS endpoint reachable
     try {
-      await fetch('http://localhost:8080/ws/info', { signal: AbortSignal.timeout(3000) });
+      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:8080";
+      await fetch(`${apiBase.replace(/\/+$/, "")}/ws/info`, { signal: AbortSignal.timeout(3000) });
       setCheck('notifs', 'ok', 'WebSocket endpoint phản hồi');
     } catch {
       setCheck('notifs', 'warn', 'WebSocket không phản hồi (có thể bình thường nếu không có kết nối active)');

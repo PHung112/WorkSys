@@ -276,7 +276,7 @@ export default function GitHubIntegrationView({
     }
   };
 
-  const manualWebhookUrl = `${customTunnelUrl.trim().replace(/\/+$/, "") || "http://localhost:8080"}/api/webhooks/github`;
+  const manualWebhookUrl = `${customTunnelUrl.trim().replace(/\/+$/, "") || import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/webhooks/github`;
 
   if (loadingStatus) {
     return (
