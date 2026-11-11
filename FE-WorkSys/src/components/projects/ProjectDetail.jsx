@@ -6,7 +6,6 @@ import ProjectMembersView from "./ProjectMembersView";
 import ProjectArchiveView from "./ProjectArchiveView";
 import GitHubIntegrationView from "./GitHubIntegrationView";
 import AiChatView from "./AiChatView";
-import AiTaskDecompositionView from "./AiTaskDecompositionView";
 import MemberProfileModal from "./modals/MemberProfileModal";
 import ProjectDetailHeader from "./kanban/ProjectDetailHeader";
 import KanbanBoard from "./kanban/KanbanBoard";
@@ -29,6 +28,7 @@ export default function ProjectDetail({
   currentUser,
   myRole,
   isLoading = false,
+  onProjectUpdated,
   onOpenEditProject,
   onOpenDeleteProject,
   onOpenLeave,
@@ -160,11 +160,18 @@ export default function ProjectDetail({
         .updateTaskStatus(updatedTask.id, destination.droppableId, draggedTask.version)
         .catch((err) => {
           console.error("Cập nhật trạng thái task thất bại:", err);
+          const errorMsg =
+            err.response?.data?.message ||
+            err.response?.data?.error ||
+            err.message ||
+            "Không thể cập nhật trạng thái công việc";
           if (err.response?.status === 409) {
             alert(
               err.response?.data?.message ||
-                "Công việc này vừa được người khác cập nhật! Bảng đã được đồng bộ lại trạng thái mới nhất."
+              "Công việc này vừa được người khác cập nhật! Bảng đã được đồng bộ lại trạng thái mới nhất."
             );
+          } else {
+            alert(errorMsg);
           }
           setKanbanTasks(tasks);
         });
@@ -180,12 +187,6 @@ export default function ProjectDetail({
   const closeDrawer = () => {
     setIsDrawerOpen(false);
     setTimeout(() => setSelectedDrawerTask(null), 300);
-  };
-
-  const handleAiTasksCreated = (newTasks) => {
-    if (Array.isArray(newTasks) && newTasks.length > 0) {
-      setKanbanTasks((prev) => [...prev, ...newTasks]);
-    }
   };
 
   return (
@@ -254,7 +255,7 @@ export default function ProjectDetail({
         <GitHubIntegrationView
           selectedProject={selectedProject}
           onBackToKanban={() => setActiveView("kanban")}
-          onProjectUpdated={() => {}}
+          onProjectUpdated={onProjectUpdated || (() => { })}
         />
       )}
 
@@ -262,15 +263,6 @@ export default function ProjectDetail({
         <AiChatView
           projectId={selectedProject?.id}
           selectedProject={selectedProject}
-          onBackToKanban={() => setActiveView("kanban")}
-        />
-      )}
-
-      {activeView === "ai-decompose" && (
-        <AiTaskDecompositionView
-          projectId={selectedProject?.id}
-          projectMembers={members}
-          onTasksCreated={handleAiTasksCreated}
           onBackToKanban={() => setActiveView("kanban")}
         />
       )}
@@ -352,9 +344,8 @@ export default function ProjectDetail({
                     className="flex items-center gap-3 p-2 hover:bg-surface-container rounded-xl transition-colors"
                   >
                     <div
-                      className={`w-9 h-9 rounded-full bg-surface-container-high text-primary flex items-center justify-center font-bold overflow-hidden shrink-0 ${
-                        isMe ? "border-2 border-yellow-400" : ""
-                      }`}
+                      className={`w-9 h-9 rounded-full bg-surface-container-high text-primary flex items-center justify-center font-bold overflow-hidden shrink-0 ${isMe ? "border-2 border-yellow-400" : ""
+                        }`}
                     >
                       {u.avatarUrl ? (
                         <img src={u.avatarUrl} alt={u.username} className="w-full h-full object-cover" />

@@ -17,6 +17,7 @@ const CreateTaskPage = lazy(() => import("./pages/CreateTaskPage"));
 const OAuthCallbackPage = lazy(() => import("./pages/OAuthCallbackPage"));
 const ProjectMembersPage = lazy(() => import("./pages/ProjectMembersPage"));
 const ProjectArchivePage = lazy(() => import("./pages/ProjectArchivePage"));
+const AiDecomposePage = lazy(() => import("./pages/AiDecomposePage"));
 
 // Admin pages
 const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
@@ -79,6 +80,7 @@ function Layout() {
           <Route path="/projects/:projectId/members" element={<ProjectMembersPage />} />
           <Route path="/projects/:projectId/new-task" element={<CreateTaskPage />} />
           <Route path="/projects/:projectId/archive" element={<ProjectArchivePage />} />
+          <Route path="/projects/:projectId/ai-decompose" element={<AiDecomposePage />} />
           <Route path="/tasks/new" element={<CreateTaskPage />} />
           <Route path="/taskpage" element={<CreateTaskPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

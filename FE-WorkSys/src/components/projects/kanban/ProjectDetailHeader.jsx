@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { useNavigate } from "react-router-dom";
 
 /**
  * Header dự án: Logo, tên, github link, mô tả, danh sách avatar thành viên,
@@ -22,6 +23,7 @@ export default function ProjectDetailHeader({
   onOpenLeave,
   onOpenTransfer,
 }) {
+  const navigate = useNavigate();
   return (
     <>
       {/* Top Banner Header */}
@@ -234,12 +236,8 @@ export default function ProjectDetailHeader({
           </button>
           {(myRole === "ADMIN" || myRole === "MANAGER") && (
             <button
-              onClick={() => setActiveView("ai-decompose")}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
-                activeView === "ai-decompose"
-                  ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm shadow-purple-600/30"
-                  : "text-purple-300 hover:text-white hover:bg-purple-600/20"
-              }`}
+              onClick={() => navigate(`/projects/${selectedProject.id}/ai-decompose`)}
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer whitespace-nowrap text-purple-300 hover:text-white hover:bg-purple-600/20"
             >
               <span className="material-symbols-outlined text-[17px]">auto_awesome</span>
               <span>AI Chia Task</span>
