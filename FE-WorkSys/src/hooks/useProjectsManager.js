@@ -544,11 +544,41 @@ export function useProjectsManager(navigate, searchParams, setSearchParams) {
   };
 
   const handleDeleteTask = async (taskId) => {
+    // 1. Sao lưu task cũ để rollback nếu xóa thất bại
+    const taskToDelete = tasks.find((t) => t.id === taskId);
+
+    // 2. Optimistic Update: Xóa task khỏi state ngay lập tức (0ms) -> Biến mất liền trên Kanban
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+
+    // 3. Cập nhật cache ngay để không bị phục hồi task cũ khi chuyển view/tab
+    if (selectedProject?.id) {
+      const cached = getCachedProjectDetails(selectedProject.id);
+      if (cached && cached.tasks) {
+        setCachedProjectDetails(selectedProject.id, {
+          tasks: cached.tasks.filter((t) => t.id !== taskId),
+        });
+      }
+    }
+
     try {
+      // 4. Gọi API xóa task ở backend ngầm
       await taskApi.deleteTask(taskId);
-      await refreshDetails(selectedProject.id);
-    } catch {
-      // ignore
+      // Xóa thành công trên DB, không cần gọi refreshDetails làm giật lag giao diện
+    } catch (err) {
+      console.error("Lỗi khi xóa task:", err);
+      // 5. Nếu server trả về lỗi: Khôi phục lại task và thông báo lỗi rõ ràng
+      if (taskToDelete) {
+        setTasks((prev) => [...prev, taskToDelete]);
+        if (selectedProject?.id) {
+          const cached = getCachedProjectDetails(selectedProject.id);
+          if (cached && cached.tasks) {
+            setCachedProjectDetails(selectedProject.id, {
+              tasks: [...cached.tasks, taskToDelete],
+            });
+          }
+        }
+      }
+      alert(err?.response?.data?.message || "Xóa nhiệm vụ thất bại. Vui lòng thử lại!");
     }
   };
 
