@@ -59,7 +59,7 @@ export default function AiTaskDecompositionView({
   const loadingMessages = [
     "Đang kết nối với Google Gemini AI...",
     "Đang phân tích cấu trúc & yêu cầu kỹ thuật...",
-    "Đang phân rã tính năng theo chuẩn CSDL ➔ API ➔ UI ➔ Test...",
+    "Đang phân rã tính năng theo quy trình kỹ thuật tối ưu...",
     "Đang đối chiếu danh sách thành viên và ước lượng thời gian...",
     "Đang hoàn tất cấu trúc nhiệm vụ...",
   ];
@@ -194,7 +194,7 @@ export default function AiTaskDecompositionView({
               <span>AI Tự Động Phân Rã Nhiệm Vụ (WBS)</span>
             </h2>
             <p className="text-on-surface-variant text-xs mt-0.5">
-              Chuyển đổi một mục tiêu tính năng lớn thành danh sách 3-6 task con chuẩn quy trình CSDL ➔ API ➔ UI ➔ Test
+              Tự động phân tích ngữ cảnh dự án & repo để chia nhỏ mục tiêu thành các task con thực tế, chính xác
             </p>
           </div>
         </div>

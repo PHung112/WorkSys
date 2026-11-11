@@ -126,11 +126,14 @@ public class AiService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Dự án không tồn tại với ID: " + projectId));
 
-        // 2. Lấy danh sách thành viên hiện có trong dự án để đưa vào ngữ cảnh cho AI
+        // 2. Lấy danh sách thành viên hiện có trong dự án (kèm Role và Chuyên môn/Position) để đưa vào ngữ cảnh cho AI
         List<ProjectMember> members = projectMemberRepository.findByProject(project);
         String memberContext = members.stream()
-                .map(m -> String.format("- ID: %d | Username: %s | Role: %s",
-                        m.getUser().getId(), m.getUser().getUsername(), m.getRole().name()))
+                .map(m -> String.format("- ID: %d | Username: %s | Vai trò: %s%s",
+                        m.getUser().getId(),
+                        m.getUser().getUsername(),
+                        m.getRole().name(),
+                        m.getPosition() != null && !m.getPosition().isBlank() ? " | Vị trí/Chuyên môn: " + m.getPosition() : ""))
                 .collect(Collectors.joining("\n"));
 
         if (memberContext.isBlank()) {
@@ -142,35 +145,53 @@ public class AiService {
                 ? requestDTO.getTargetDeadline().trim()
                 : today.plusDays(14).toString();
 
-        // 3. Xây dựng Prompt kỹ thuật (Prompt Engineering + Few-Shot)
+        String repoInfo = (project.getGithubRepo() != null && !project.getGithubRepo().isBlank())
+                ? project.getGithubRepo()
+                : "Chưa kết nối GitHub";
+        String projectDesc = (project.getDescription() != null && !project.getDescription().isBlank())
+                ? project.getDescription()
+                : "Không có mô tả";
+
+        // 3. Xây dựng Prompt kỹ thuật linh hoạt theo ngữ cảnh dự án (Scope & Context-aware)
         String prompt = String.format(
                 """
-                Bạn là một Tech Lead / Software Architect giàu kinh nghiệm thực chiến.
-                Nhiệm vụ của bạn: Hãy phân rã mục tiêu tính năng phần mềm lớn dưới đây thành từ 3 đến 6 nhiệm vụ con (Sub-tasks) cụ thể, bám sát quy trình phát triển phần mềm chuẩn:
-                Bước 1: Thiết kế CSDL & Models -> Bước 2: Viết REST API Backend & Nghiệp vụ -> Bước 3: Dựng Giao diện UI/UX Frontend -> Bước 4: Tích hợp, Kiểm thử & Xử lý lỗi.
+                Bạn là một Tech Lead / Software Architect thực chiến, thực tế và sắc bén.
+                Nhiệm vụ: Phân tích mục tiêu hoặc yêu cầu công việc dưới đây và phân rã thành các nhiệm vụ con (Sub-tasks) kỹ thuật THỰC TẾ, CHÍNH XÁC, KHÔNG VẼ VỜI THỪA THÃI.
 
                 THÔNG TIN DỰ ÁN:
                 - Tên dự án: %s
+                - Mô tả dự án: %s
+                - Kho mã nguồn GitHub liên kết: %s
                 - Ngày hôm nay: %s
-                - Hạn chót mục tiêu hoàn thành: %s
+                - Hạn chót mong muốn: %s
                 - Danh sách thành viên trong team:
                 %s
 
-                MỤC TIÊU / TÍNH NĂNG CẦN PHÂN RÃ:
+                MỤC TIÊU / CÔNG VIỆC CẦN PHÂN RÃ:
                 %s
 
                 YÊU CẦU BỔ SUNG (NẾU CÓ):
                 %s
 
-                QUY TẮC PHẢN HỒI BẮT BUỘC (TUÂN THỦ 100%%):
-                1. Chỉ trả về DUY NHẤT một chuỗi JSON Array thuần túy. TUYỆT ĐỐI KHÔNG thêm bất kỳ câu chào, giải thích, markdown nào ngoài JSON.
-                2. Mỗi phần tử trong mảng JSON phải đúng theo cấu trúc sau:
+                QUY TẮC PHÂN TÍCH PHẠM VI (QUAN TRỌNG NHẤT):
+                1. ĐÁNH GIÁ ĐÚNG BẢN CHẤT DỰ ÁN VÀ REPO:
+                   - Nếu dự án là trang tĩnh, Portfolio, Landing page, blog cá nhân (ví dụ repo có tên 'portfolio', 'landing-page', 'ui', 'frontend' hoặc chỉ là web giới thiệu cá nhân): TUYỆT ĐỐI KHÔNG tự bịa ra CSDL (Database/PostgreSQL/MySQL), KHÔNG tạo REST API Backend phức tạp nếu người dùng không yêu cầu có CMS hay database.
+                   - Chỉ tạo task Backend/CSDL khi mục tiêu hoặc dự án thực sự là hệ thống Fullstack hoặc người dùng yêu cầu rõ ràng.
+                2. TƯƠNG XỨNG ĐỘ PHỨC TẠP:
+                   - Với công việc nhỏ, chỉnh sửa đơn giản (ví dụ: đổi tiêu đề web, chỉnh màu, cập nhật text, sửa responsive, thay icon/ảnh): Chỉ cần tạo từ 1 đến 2 sub-tasks ngắn gọn, thực tế. TUYỆT ĐỐI KHÔNG chia nhỏ thành 5-6 task cồng kềnh.
+                   - Với tính năng lớn (ví dụ: Cổng thanh toán, Chat realtime, 2FA, Hệ thống phân quyền): Mới cần phân rã từ 3 đến 5 sub-tasks theo các bước kỹ thuật tương ứng.
+                3. PHÂN CÔNG THÔNG MINH:
+                   - Dựa vào Vị trí/Chuyên môn (Frontend, Backend, Fullstack, UI/UX, QA...) của thành viên trong danh sách để gán 'suggestedAssigneeId' phù hợp. Nếu task chỉ là Frontend, ưu tiên giao cho thành viên Frontend/UI.
+
+                QUY TẮC ĐỊNH DẠNG ĐẦU RA (TUÂN THỦ 100%%):
+                - Chỉ trả về DUY NHẤT một chuỗi JSON Array thuần túy. TUYỆT ĐỐI KHÔNG thêm bất kỳ câu chào, giải thích, markdown nào ngoài JSON.
+                - Cấu trúc từng phần tử:
                 [
                   {
-                    "title": "Tiêu đề nhiệm vụ con ngắn gọn, súc tích (tiếng Việt)",
-                    "description": "Mô tả chi tiết các bước kỹ thuật cần làm, công nghệ sử dụng và tiêu chí nghiệm thu",
-                    "priority": "HIGH", // chỉ chọn 1 trong 3 giá trị: HIGH, MEDIUM, LOW
-                    "estimatedDays": 2, // số nguyên ngày ước tính hoàn thành (từ 1 đến 7)
+                    "title": "Tiêu đề nhiệm vụ con ngắn gọn, thực tế (tiếng Việt)",
+                    "description": "Mô tả cụ thể file/thành phần cần sửa hoặc thao tác kỹ thuật cần thực hiện và tiêu chí nghiệm thu",
+                    "priority": "HIGH", // chỉ chọn 1 trong: HIGH, MEDIUM, LOW
+                    "estimatedDays": 1, // số ngày ước tính (số nguyên từ 1 đến 7)
                     "suggestedDeadline": "YYYY-MM-DD", // ngày hạn chót gợi ý (từ hôm nay đến trước hoặc bằng %s)
                     "suggestedAssigneeId": 1, // ID thành viên phù hợp từ danh sách trên (hoặc null nếu không xác định)
                     "suggestedAssigneeName": "username" // Tên thành viên tương ứng (hoặc null)
@@ -178,6 +199,8 @@ public class AiService {
                 ]
                 """,
                 project.getName(),
+                projectDesc,
+                repoInfo,
                 today,
                 targetDeadline,
                 memberContext,
