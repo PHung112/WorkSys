@@ -126,11 +126,10 @@ export default function ProjectMembersView({
             <button
               key={tab.key}
               onClick={() => setRoleFilter(tab.key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap cursor-pointer ${
-                roleFilter === tab.key
-                  ? "bg-primary text-on-primary shadow-sm"
-                  : "bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface border border-outline-variant/10"
-              }`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap cursor-pointer ${roleFilter === tab.key
+                ? "bg-primary text-on-primary shadow-sm"
+                : "bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface border border-outline-variant/10"
+                }`}
             >
               {tab.label}
             </button>
@@ -144,19 +143,19 @@ export default function ProjectMembersView({
           <table className="w-full text-left border-collapse min-w-[640px]">
             <thead>
               <tr className="border-b border-outline-variant/15 bg-surface-container/50">
-                <th className="py-3 px-4 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">
+                <th className="py-3 px-4 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider text-center">
                   Thành viên
                 </th>
-                <th className="py-3 px-4 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">
+                <th className="py-3 px-4 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider text-center">
                   Vai trò
                 </th>
-                <th className="py-3 px-4 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">
+                <th className="py-3 px-4 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider text-center">
                   Chuyên môn
                 </th>
-                <th className="py-3 px-4 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">
+                <th className="py-3 px-4 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider text-center">
                   Nhiệm vụ được giao
                 </th>
-                <th className="py-3 px-4 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider text-right">
+                <th className="py-3 px-4 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider text-center">
                   Tùy chọn
                 </th>
               </tr>
@@ -177,9 +176,8 @@ export default function ProjectMembersView({
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3">
                         <div
-                          className={`w-10 h-10 rounded-full bg-surface-container-high text-primary flex items-center justify-center font-bold overflow-hidden shrink-0 shadow-sm ring-1 ring-outline-variant/20 ${
-                            isSelf ? "border-2 border-yellow-400" : ""
-                          }`}
+                          className={`w-10 h-10 rounded-full bg-surface-container-high text-primary flex items-center justify-center font-bold overflow-hidden shrink-0 shadow-sm ring-1 ring-outline-variant/20 ${isSelf ? "border-2 border-yellow-400" : ""
+                            }`}
                         >
                           {member.avatarUrl ? (
                             <img src={member.avatarUrl} alt={member.username} className="w-full h-full object-cover" />
@@ -202,9 +200,9 @@ export default function ProjectMembersView({
                     </td>
 
                     {/* Cột 2: Vai trò */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 text-center">
                       {member.role === "ADMIN" && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-bold rounded-full uppercase tracking-wider">
+                        <span className="inline-flex items-center  gap-1.5 px-2.5 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-bold rounded-full uppercase tracking-wider">
                           <span className="material-symbols-outlined text-[14px]">shield_person</span>
                           ADMIN
                         </span>
@@ -224,7 +222,7 @@ export default function ProjectMembersView({
                     </td>
 
                     {/* Cột 2.5: Chuyên môn */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4  text-center">
                       {member.position ? (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-500/10 text-purple-400 border border-purple-500/20 text-xs font-semibold rounded-full">
                           <span className="material-symbols-outlined text-[14px]">psychology</span>
@@ -238,7 +236,7 @@ export default function ProjectMembersView({
                     </td>
 
                     {/* Cột 3: Số task được giao */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4  text-center">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-surface-container rounded-lg text-xs font-medium text-on-surface border border-outline-variant/10">
                         <span className="material-symbols-outlined text-[15px] text-primary">task_alt</span>
                         {taskCount} nhiệm vụ
@@ -246,14 +244,14 @@ export default function ProjectMembersView({
                     </td>
 
                     {/* Cột 4: Nút Option 3 chấm dọc (more_vert) */}
-                    <td className="py-3.5 px-4 text-right">
+                    <td className="py-3.5 px-4  text-center">
                       <button
+                        data-member-action-btn={memberUserId}
                         onClick={(e) => handleToggleMenu(e, member)}
-                        className={`w-8 h-8 rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer ${
-                          isMenuOpen
-                            ? "bg-surface-container-highest text-primary"
-                            : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high"
-                        }`}
+                        className={`w-8 h-8 rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer ${isMenuOpen
+                          ? "bg-surface-container-highest text-primary"
+                          : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high"
+                          }`}
                         title="Tùy chọn thao tác"
                       >
                         <span className="material-symbols-outlined text-[20px]">more_vert</span>

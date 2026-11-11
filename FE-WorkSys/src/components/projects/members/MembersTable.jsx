@@ -14,19 +14,19 @@ export default function MembersTable({
         <table className="w-full text-left border-collapse min-w-[640px]">
           <thead>
             <tr className="border-b border-outline-variant/15 bg-surface-container/50">
-              <th className="py-3.5 px-5 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">
+              <th className="py-3.5 px-5 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider text-center">
                 Thành viên
               </th>
-              <th className="py-3.5 px-5 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">
+              <th className="py-3.5 px-5 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider  text-center">
                 Vai trò
               </th>
-              <th className="py-3.5 px-5 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">
+              <th className="py-3.5 px-5 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider text-center ">
                 Chuyên môn
               </th>
-              <th className="py-3.5 px-5 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider">
+              <th className="py-3.5 px-5 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider  text-center">
                 Nhiệm vụ được giao
               </th>
-              <th className="py-3.5 px-5 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider text-right">
+              <th className="py-3.5 px-5 font-label-xs text-label-xs text-on-surface-variant uppercase tracking-wider text-right  text-center">
                 Tùy chọn
               </th>
             </tr>
@@ -47,9 +47,8 @@ export default function MembersTable({
                   <td className="py-4 px-5">
                     <div className="flex items-center gap-3.5">
                       <div
-                        className={`w-11 h-11 rounded-full bg-surface-container-high text-primary flex items-center justify-center font-bold overflow-hidden shrink-0 shadow-sm ring-1 ring-outline-variant/20 ${
-                          isSelf ? "border-2 border-yellow-400 shadow-yellow-400/20" : ""
-                        }`}
+                        className={`w-11 h-11 rounded-full bg-surface-container-high text-primary flex items-center justify-center font-bold overflow-hidden shrink-0 shadow-sm ring-1 ring-outline-variant/20 ${isSelf ? "border-2 border-yellow-400 shadow-yellow-400/20" : ""
+                          }`}
                       >
                         {member.avatarUrl ? (
                           <img
@@ -126,12 +125,12 @@ export default function MembersTable({
                   {/* Cột 4: Nút Option 3 chấm dọc */}
                   <td className="py-4 px-5 text-right">
                     <button
+                      data-member-action-btn={memberUserId}
                       onClick={(e) => onToggleMenu(e, member)}
-                      className={`w-9 h-9 rounded-xl inline-flex items-center justify-center transition-all cursor-pointer ${
-                        isMenuOpen
-                          ? "bg-surface-container-highest text-primary shadow-sm"
-                          : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high"
-                      }`}
+                      className={`w-9 h-9 rounded-xl inline-flex items-center justify-center transition-all cursor-pointer ${isMenuOpen
+                        ? "bg-surface-container-highest text-primary shadow-sm"
+                        : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high"
+                        }`}
                       title="Tùy chọn thao tác"
                     >
                       <span className="material-symbols-outlined text-[22px]">more_vert</span>

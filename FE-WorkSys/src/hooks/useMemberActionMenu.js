@@ -19,9 +19,15 @@ export function useMemberActionMenu() {
   // Đóng dropdown khi click ra ngoài, cuộn trang ngoài hoặc resize cửa sổ
   useEffect(() => {
     const handleOutsideClick = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        handleCloseMenu();
+      // 1. Click bên trong menu dropdown -> không đóng
+      if (menuRef.current && menuRef.current.contains(e.target)) {
+        return;
       }
+      // 2. Click vào nút 3 chấm toggle -> bỏ qua mousedown để event onClick của nút tự toggle đóng/mở
+      if (e.target && e.target.closest && e.target.closest("[data-member-action-btn]")) {
+        return;
+      }
+      handleCloseMenu();
     };
 
     const handleScroll = (e) => {
