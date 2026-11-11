@@ -113,8 +113,8 @@ export default function ProjectsPage() {
         isLoading={isInitialLoadingProjects}
       />
 
-      {/* Main Workspace Content - co bóp mượt mà khi mở/đóng sidebar */}
-      <div className={`flex-1 flex flex-col min-w-0 relative h-[calc(100vh-4rem)] transition-all duration-300 ease-in-out ${sidebarOpen ? "pl-72" : "pl-0"}`}>
+      {/* Main Workspace Content - co bóp tự động khi sidebar mở/đóng (flex layout) */}
+      <div className="flex-1 flex flex-col min-w-0 relative h-[calc(100vh-4rem)]">
         <main className="flex-1 flex flex-col overflow-hidden relative">
           {showMyTasks ? (
             <MyTasksDetail
@@ -179,6 +179,9 @@ export default function ProjectsPage() {
               currentUser={currentUser}
               myRole={myRole}
               isLoading={isLoadingDetails}
+              onProjectUpdated={(updated) => {
+                setSelectedProject((prev) => ({ ...prev, ...updated }));
+              }}
               onOpenEditProject={() => {
                 setProjectForm({
                   name: selectedProject.name,
